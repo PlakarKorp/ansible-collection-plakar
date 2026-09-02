@@ -29,6 +29,11 @@ plugins:
       name: job_info
       namespace: ''
       version_added: 0.1.0
+    prune:
+      description: Prune snapshots from a Plakar store by retention rule
+      name: prune
+      namespace: ''
+      version_added: 0.1.0
     restore:
       description: Trigger a Plakar restore
       name: restore

@@ -80,6 +80,29 @@
           - checked.changed
           - checked.job.status == 'succeeded'
 
+    # A generous rule: proves the wiring both ways without eating the shared
+    # dev stack's snapshots.
+    - name: Preview a prune (check mode)
+      plakarkorp.plakar.prune:
+        store: "{{ store_name }}"
+        retention: {year: 100, per_year: 1000}
+      check_mode: true
+      register: prune_preview
+
+    - name: The rule keeps everything
+      ansible.builtin.assert:
+        that:
+          - not prune_preview.changed
+          - prune_preview.deleted | length == 0
+          - prune_preview.kept | length > 0
+
+    - name: Prune for real under the same rule is a no-op
+      plakarkorp.plakar.prune:
+        store: "{{ store_name }}"
+        retention: {year: 100, per_year: 1000}
+      register: pruned
+      failed_when: pruned.changed or (pruned.deleted | length > 0)
+
     - name: Look the backup job up by id, with its log
       plakarkorp.plakar.job_info:
         job_id: "{{ backup.job.id }}"
