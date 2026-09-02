@@ -15,6 +15,7 @@ import json
 import time
 
 from ansible.module_utils.basic import env_fallback
+from ansible.module_utils.six.moves.urllib.parse import quote
 from ansible.module_utils.urls import fetch_url
 
 
@@ -153,23 +154,91 @@ class PlakarClient(object):
             return self.organization_id
         return self.me()['organization_id']
 
-    def connector_by_name(self, kind, name):
-        """kind: source|store|destination. Matches on the connector name."""
+    def list_connectors(self, kind):
+        """kind: source|store|destination."""
         res = self.request('GET',
                            '/api/v1/account/organizations/%s/connectors' % self.org_id(),
                            query={'type': kind})
-        items = res.get('items') or []
-        matches = [c for c in items if c.get('name') == name]
-        if not matches:
+        return res.get('items') or []
+
+    def find_connector(self, kind, name):
+        """One connector by name, None when absent, error on a duplicate name."""
+        matches = [c for c in self.list_connectors(kind) if c.get('name') == name]
+        if len(matches) > 1:
+            raise PlakarError('%d %s connectors named %r — names must be unique to '
+                              'address them from a playbook' % (len(matches), kind, name))
+        return matches[0] if matches else None
+
+    def connector_by_name(self, kind, name):
+        """Like find_connector, but absence is an error naming the visible ones."""
+        found = self.find_connector(kind, name)
+        if found is None:
+            items = self.list_connectors(kind)
             known = ', '.join(sorted(repr(c.get('name')) for c in items)) or '(none visible)'
             raise PlakarError(
                 'no %s connector named %r — visible: %s. An empty list can also mean '
                 'the API key\'s user holds no grant in the organization.'
                 % (kind, name, known))
-        if len(matches) > 1:
-            raise PlakarError('%d %s connectors named %r — names must be unique to '
-                              'address them from a playbook' % (len(matches), kind, name))
+        return found
+
+    def installed_integration(self, name):
+        res = self.request('GET', '/api/v1/integrations/installed')
+        items = res if isinstance(res, list) else (res.get('items') or [])
+        matches = [i for i in items if i.get('name') == name]
+        if not matches:
+            known = ', '.join(sorted(repr(i.get('name')) for i in items)) or '(none installed)'
+            raise PlakarError('no installed integration named %r — installed: %s'
+                              % (name, known))
         return matches[0]
+
+    def resource_ref(self, value):
+        """A resource across all inventories, by URN first, then by name.
+
+        The route serves at most 50 rows per page whatever limit is asked;
+        the search filter narrows server-side, exact matching happens here.
+        """
+        items, offset = [], 0
+        while True:
+            res = self.request('GET', '/api/v1/inventories/resources',
+                               query={'limit': 50, 'offset': offset,
+                                      'search': quote(value)})
+            page = res.get('items') or []
+            items.extend(page)
+            offset += len(page)
+            if not page or offset >= (res.get('total') or 0):
+                break
+        by_urn = [r for r in items if r.get('urn') == value]
+        if by_urn:
+            return by_urn[0]
+        by_name = [r for r in items if r.get('name') == value]
+        if len(by_name) > 1:
+            raise PlakarError('%d resources named %r — use the URN to disambiguate'
+                              % (len(by_name), value))
+        if by_name:
+            return by_name[0]
+        raise PlakarError('no resource with URN or name %r' % value)
+
+    # --- SLAs ---------------------------------------------------------------
+
+    def sla_path(self, tail):
+        return '/api/v1/account/organizations/%s/slas/%s' % (self.org_id(), tail)
+
+    def sla_templates(self):
+        res = self.request('GET', self.sla_path('templates'))
+        return res if isinstance(res, list) else (res.get('items') or res.get('templates') or [])
+
+    def find_sla_template(self, name):
+        matches = [t for t in self.sla_templates() if t.get('name') == name]
+        if len(matches) > 1:
+            raise PlakarError('%d SLA templates named %r — names must be unique to '
+                              'address them from a playbook' % (len(matches), name))
+        return matches[0] if matches else None
+
+    def sla_contracts(self):
+        res = self.request('GET', self.sla_path('contracts'))
+        if isinstance(res, list):
+            return res
+        return res.get('contracts') or res.get('items') or []
 
     def snapshots(self, store_id):
         res = self.request('GET', '/api/v1/snapshots/store/%s' % store_id)
