@@ -114,8 +114,176 @@
           - bg_info.jobs[0].status == 'succeeded'
           - bg_info.jobs[0].task_type == 'restore'
 
+    # --- declarative resources (step 3) -----------------------------------
+    # Clean slate first, so a re-run over a previously aborted play still
+    # asserts real creations below.
+    - name: Clean up any leftovers
+      block:
+        - plakarkorp.plakar.sla_contract:
+            template: Ansible SLA
+            source: Ansible source
+            state: absent
+        - plakarkorp.plakar.sla_template:
+            name: Ansible SLA
+            state: absent
+        - plakarkorp.plakar.connector:
+            name: Ansible source
+            type: source
+            state: absent
+        - plakarkorp.plakar.repository:
+            name: Ansible repo
+            state: absent
+
+    - name: Create a managed repository
+      plakarkorp.plakar.repository:
+        name: Ansible repo
+        protocol: s3
+        integration: s3
+        resource: Silent Frost
+        environment: production
+        compression: LZ4
+        fields:
+          passphrase: correcthorsebatterystaple
+          access_key: minioadmin
+          secret_access_key: minioadmin
+          port: 9000
+          root: /ansible-repo
+          storage_class: STANDARD
+          use_tls: false
+          tls_insecure_no_verify: false
+          virtual_host: false
+      register: repo
+
+    - name: The repository was created and initialized
+      ansible.builtin.assert:
+        that:
+          - repo.changed
+          - repo.connector.initialized
+
+    - name: The same repository again is a no-op
+      plakarkorp.plakar.repository:
+        name: Ansible repo
+        protocol: s3
+        integration: s3
+        resource: Silent Frost
+        environment: production
+        fields:
+          root: /ansible-repo
+      register: repo_again
+      failed_when: repo_again.changed
+
+    - name: Changing a field is an update
+      plakarkorp.plakar.repository:
+        name: Ansible repo
+        fields:
+          storage_class: STANDARD_IA
+      register: repo_update
+
+    - name: The update reports what differed
+      ansible.builtin.assert:
+        that:
+          - repo_update.changed
+          - repo_update.diff_keys == ['fields']
+
+    - name: Create a managed source connector
+      plakarkorp.plakar.connector:
+        name: Ansible source
+        type: source
+        protocol: s3
+        integration: s3
+        resource: Novel Core
+        environment: production
+        data_classes: [database]
+        fields:
+          passphrase: correcthorsebatterystaple
+          access_key: minioadmin
+          secret_access_key: minioadmin
+          port: 9000
+          root: /source
+      register: src_created
+
+    - name: A protection policy
+      plakarkorp.plakar.sla_template:
+        name: Ansible SLA
+        environment: production
+        data_classes: [database]
+        temporalities:
+          day:
+            frequency: 1
+            retention: 7
+            store: Ansible repo
+      register: sla
+
+    - name: The same policy again is a no-op
+      plakarkorp.plakar.sla_template:
+        name: Ansible SLA
+        environment: production
+        data_classes: [database]
+      register: sla_again
+      failed_when: sla_again.changed
+
+    - name: Tightening retention is an update
+      plakarkorp.plakar.sla_template:
+        name: Ansible SLA
+        temporalities:
+          day:
+            frequency: 2
+            retention: 14
+            store: Ansible repo
+      register: sla_update
+      failed_when: not sla_update.changed
+
+    - name: Bind the policy to the source
+      plakarkorp.plakar.sla_contract:
+        template: Ansible SLA
+        source: Ansible source
+      register: bind
+
+    - name: The same binding again is a no-op
+      plakarkorp.plakar.sla_contract:
+        template: Ansible SLA
+        source: Ansible source
+      register: bind_again
+      failed_when: bind_again.changed
+
+    # --- teardown, itself an idempotency check ----------------------------
+    - name: Unbind
+      plakarkorp.plakar.sla_contract:
+        template: Ansible SLA
+        source: Ansible source
+        state: absent
+      register: unbind
+      failed_when: not unbind.changed
+
+    - name: Drop the policy
+      plakarkorp.plakar.sla_template:
+        name: Ansible SLA
+        state: absent
+      register: sla_gone
+      failed_when: not sla_gone.changed
+
+    - name: Drop the source
+      plakarkorp.plakar.connector:
+        name: Ansible source
+        type: source
+        state: absent
+
+    - name: Drop the repository
+      plakarkorp.plakar.repository:
+        name: Ansible repo
+        state: absent
+      register: repo_gone
+
+    - name: Dropping it again is a no-op
+      plakarkorp.plakar.repository:
+        name: Ansible repo
+        state: absent
+      register: repo_gone_again
+      failed_when: repo_gone_again.changed or not repo_gone.changed
+
     - name: Summary
       ansible.builtin.debug:
         msg:
           - "backup {{ backup.job.id }}: {{ backup.job.status }}"
           - "restore {{ restore.job.id }}: {{ restore.job.status }} (snapshot {{ restore.snapshot_id }})"
+          - "declarative round-trip: repository, connector, sla_template, sla_contract all green"

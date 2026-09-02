@@ -30,9 +30,14 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.backup` | Trigger a backup of a source into a store |
 | `plakarkorp.plakar.restore` | Restore a snapshot from a store onto a destination |
 | `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
+| `plakarkorp.plakar.repository` | Declare backup repositories (store connectors, kloset init included) |
+| `plakarkorp.plakar.connector` | Declare source and destination connectors |
+| `plakarkorp.plakar.sla_template` | Declare protection policies |
+| `plakarkorp.plakar.sla_contract` | Bind a policy to a source |
 
-Connectors are addressed **by name**; the modules resolve them within the
-organization at run time.
+Everything is addressed **by name**; the modules resolve names within the
+organization at run time, and the declarative modules manage only the options
+the playbook sets — anything else keeps its server-side value.
 
 ## Example
 
@@ -64,6 +69,32 @@ organization at run time.
 Backups and restores are asynchronous server-side: the modules poll until the
 job stops (`wait: true`, the default, `wait_timeout: 600`), or return
 immediately with `wait: false` for later polling with `job_info`.
+
+Declaring the estate looks like this:
+
+```yaml
+- plakarkorp.plakar.repository:
+    name: Offsite S3
+    protocol: s3
+    integration: s3
+    resource: Ample Sky          # inventory resource, by URN or name
+    compression: ZSTD
+    fields:
+      passphrase: "{{ vault_repo_passphrase }}"
+      access_key: "{{ vault_s3_access_key }}"
+      secret_access_key: "{{ vault_s3_secret_key }}"
+      root: /backups
+
+- plakarkorp.plakar.sla_template:
+    name: Critical SLA
+    environment: production
+    temporalities:
+      day: {frequency: 4, retention: 10, store: Offsite S3}
+
+- plakarkorp.plakar.sla_contract:
+    template: Critical SLA
+    source: Production DB
+```
 
 ## Multi-organization plays
 
