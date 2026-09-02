@@ -1,0 +1,35 @@
+# plakman daemon configuration for the hermetic e2e stack. Mirrors the
+# production image layout (/usr/local/bin binaries, /var/lib/plakman state);
+# parentUrl points nowhere because nothing here enrolls against a parent --
+# the first admin comes from `plakman bootstrap-root`.
+services:
+  http:
+    listen:
+      address: :8080
+  database:
+    url: postgres://plakman:plakman@db/plakman
+  plakman:
+    parentUrl: http://parent.invalid:8081
+    stateDirectory: /var/lib/plakman/
+  scheduler:
+    plakmanUrl: http://plakman:8080
+  executor:
+    pkgDir: /var/lib/plakman/pkgs/
+    plakmanUrl: http://plakman:8080
+    plakletBin: /usr/local/bin/plaklet
+    cachedBin: /usr/local/bin/cached
+    # The e2e drives s3 connectors only; without the agent the executor would
+    # refuse to start when SSH_AUTH_SOCK is unset.
+    disableSSHAgent: true
+  journal:
+    dbStorage: true
+    logPath: /var/lib/plakman/journal.log
+  log:
+    level: INFO
+api:
+  v1:
+    mode:
+      plakman: true
+      plakario: false
+      plakarui: true
+    cors: true
