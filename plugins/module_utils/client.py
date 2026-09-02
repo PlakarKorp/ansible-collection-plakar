@@ -218,28 +218,6 @@ class PlakarClient(object):
             return by_name[0]
         raise PlakarError('no resource with URN or name %r' % value)
 
-    # --- SLAs ---------------------------------------------------------------
-
-    def sla_path(self, tail):
-        return '/api/v1/account/organizations/%s/slas/%s' % (self.org_id(), tail)
-
-    def sla_templates(self):
-        res = self.request('GET', self.sla_path('templates'))
-        return res if isinstance(res, list) else (res.get('items') or res.get('templates') or [])
-
-    def find_sla_template(self, name):
-        matches = [t for t in self.sla_templates() if t.get('name') == name]
-        if len(matches) > 1:
-            raise PlakarError('%d SLA templates named %r — names must be unique to '
-                              'address them from a playbook' % (len(matches), name))
-        return matches[0] if matches else None
-
-    def sla_contracts(self):
-        res = self.request('GET', self.sla_path('contracts'))
-        if isinstance(res, list):
-            return res
-        return res.get('contracts') or res.get('items') or []
-
     def snapshots(self, store_id):
         res = self.request('GET', '/api/v1/snapshots/store/%s' % store_id)
         return res.get('items') or []

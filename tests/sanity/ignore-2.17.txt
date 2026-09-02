@@ -2,6 +2,4 @@ plugins/modules/backup.py validate-modules:missing-gplv3-license
 plugins/modules/restore.py validate-modules:missing-gplv3-license
 plugins/modules/job_info.py validate-modules:missing-gplv3-license
 plugins/modules/connector.py validate-modules:missing-gplv3-license
-plugins/modules/repository.py validate-modules:missing-gplv3-license
-plugins/modules/sla_template.py validate-modules:missing-gplv3-license
-plugins/modules/sla_contract.py validate-modules:missing-gplv3-license
+plugins/modules/store.py validate-modules:missing-gplv3-license

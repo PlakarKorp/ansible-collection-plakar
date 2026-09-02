@@ -1,8 +1,10 @@
 # Ansible Collection — plakarkorp.plakar
 
 Drive [Plakar](https://plakar.io) from Ansible playbooks: trigger backups and
-restores, query job state, and declare repositories, connectors and SLA
-policies through the Plakar management API. Built to run inside Red Hat
+restores, query job state, and declare stores and connectors through the
+Plakar management API. In this first version the protection policy IS the
+task a playbook runs — backups and restores you trigger and schedule from your
+own automation; SLA templates and contracts stay authored in Plakar. Built to run inside Red Hat
 Ansible Automation Platform (or plain ansible-core >= 2.15).
 
 All modules talk HTTPS to the management API; nothing runs on the managed
@@ -48,10 +50,8 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.backup` | Trigger a backup of a source into a store |
 | `plakarkorp.plakar.restore` | Restore a snapshot from a store onto a destination |
 | `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
-| `plakarkorp.plakar.repository` | Declare backup repositories (store connectors, kloset init included) |
+| `plakarkorp.plakar.store` | Declare stores (initialized on creation) |
 | `plakarkorp.plakar.connector` | Declare source and destination connectors |
-| `plakarkorp.plakar.sla_template` | Declare protection policies |
-| `plakarkorp.plakar.sla_contract` | Bind a policy to a source |
 
 Everything is addressed **by name**; the modules resolve names within the
 organization at run time, and the declarative modules manage only the options
@@ -91,7 +91,7 @@ immediately with `wait: false` for later polling with `job_info`.
 Declaring the estate looks like this:
 
 ```yaml
-- plakarkorp.plakar.repository:
+- plakarkorp.plakar.store:
     name: Offsite S3
     protocol: s3
     integration: s3
@@ -102,16 +102,6 @@ Declaring the estate looks like this:
       access_key: "{{ vault_s3_access_key }}"
       secret_access_key: "{{ vault_s3_secret_key }}"
       root: /backups
-
-- plakarkorp.plakar.sla_template:
-    name: Critical SLA
-    environment: production
-    temporalities:
-      day: {frequency: 4, retention: 10, store: Offsite S3}
-
-- plakarkorp.plakar.sla_contract:
-    template: Critical SLA
-    source: Production DB
 ```
 
 ## Multi-organization plays

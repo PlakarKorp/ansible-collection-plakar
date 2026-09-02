@@ -5,9 +5,7 @@ releases:
       release_summary: 'First release of the collection: trigger backups and restores,
         query job
 
-        state, and declare repositories, connectors and SLA policies against the
-
-        Plakar management API.
+        state, and declare stores and connectors against the Plakar management API.
 
         '
     fragments:
@@ -22,16 +20,10 @@ releases:
     - description: Query Plakar job state.
       name: job_info
       namespace: ''
-    - description: Manage Plakar backup repositories.
-      name: repository
-      namespace: ''
     - description: Trigger a Plakar restore.
       name: restore
       namespace: ''
-    - description: Bind a Plakar SLA template to a source.
-      name: sla_contract
-      namespace: ''
-    - description: Manage Plakar SLA templates.
-      name: sla_template
+    - description: Manage Plakar stores.
+      name: store
       namespace: ''
     release_date: '2026-09-02'

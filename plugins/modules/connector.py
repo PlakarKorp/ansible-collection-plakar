@@ -14,8 +14,8 @@ short_description: Manage Plakar source and destination connectors
 version_added: 0.1.0
 description:
   - Creates, updates and deletes source and destination connectors in the
-    Plakar management API. For store connectors (backup repositories), use
-    M(plakarkorp.plakar.repository) instead.
+    Plakar management API. For stores, use M(plakarkorp.plakar.store)
+    instead.
   - Connectors are matched by name within the organization; the name is the
     playbook's key, so it must be unique per connector type.
   - Only the options the playbook sets are managed on update; anything else

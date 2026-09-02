@@ -119,23 +119,16 @@
     # asserts real creations below.
     - name: Clean up any leftovers
       block:
-        - plakarkorp.plakar.sla_contract:
-            template: Ansible SLA
-            source: Ansible source
-            state: absent
-        - plakarkorp.plakar.sla_template:
-            name: Ansible SLA
-            state: absent
         - plakarkorp.plakar.connector:
             name: Ansible source
             type: source
             state: absent
-        - plakarkorp.plakar.repository:
+        - plakarkorp.plakar.store:
             name: Ansible repo
             state: absent
 
-    - name: Create a managed repository
-      plakarkorp.plakar.repository:
+    - name: Create a managed store
+      plakarkorp.plakar.store:
         name: Ansible repo
         protocol: s3
         integration: s3
@@ -154,14 +147,14 @@
           virtual_host: false
       register: repo
 
-    - name: The repository was created and initialized
+    - name: The store was created and initialized
       ansible.builtin.assert:
         that:
           - repo.changed
           - repo.connector.initialized
 
-    - name: The same repository again is a no-op
-      plakarkorp.plakar.repository:
+    - name: The same store again is a no-op
+      plakarkorp.plakar.store:
         name: Ansible repo
         protocol: s3
         integration: s3
@@ -173,7 +166,7 @@
       failed_when: repo_again.changed
 
     - name: Changing a field is an update
-      plakarkorp.plakar.repository:
+      plakarkorp.plakar.store:
         name: Ansible repo
         fields:
           storage_class: STANDARD_IA
@@ -202,80 +195,21 @@
           root: /source
       register: src_created
 
-    - name: A protection policy
-      plakarkorp.plakar.sla_template:
-        name: Ansible SLA
-        environment: production
-        data_classes: [database]
-        temporalities:
-          day:
-            frequency: 1
-            retention: 7
-            store: Ansible repo
-      register: sla
-
-    - name: The same policy again is a no-op
-      plakarkorp.plakar.sla_template:
-        name: Ansible SLA
-        environment: production
-        data_classes: [database]
-      register: sla_again
-      failed_when: sla_again.changed
-
-    - name: Tightening retention is an update
-      plakarkorp.plakar.sla_template:
-        name: Ansible SLA
-        temporalities:
-          day:
-            frequency: 2
-            retention: 14
-            store: Ansible repo
-      register: sla_update
-      failed_when: not sla_update.changed
-
-    - name: Bind the policy to the source
-      plakarkorp.plakar.sla_contract:
-        template: Ansible SLA
-        source: Ansible source
-      register: bind
-
-    - name: The same binding again is a no-op
-      plakarkorp.plakar.sla_contract:
-        template: Ansible SLA
-        source: Ansible source
-      register: bind_again
-      failed_when: bind_again.changed
-
     # --- teardown, itself an idempotency check ----------------------------
-    - name: Unbind
-      plakarkorp.plakar.sla_contract:
-        template: Ansible SLA
-        source: Ansible source
-        state: absent
-      register: unbind
-      failed_when: not unbind.changed
-
-    - name: Drop the policy
-      plakarkorp.plakar.sla_template:
-        name: Ansible SLA
-        state: absent
-      register: sla_gone
-      failed_when: not sla_gone.changed
-
     - name: Drop the source
       plakarkorp.plakar.connector:
         name: Ansible source
         type: source
         state: absent
 
-    - name: Drop the repository
-      plakarkorp.plakar.repository:
+    - name: Drop the store
+      plakarkorp.plakar.store:
         name: Ansible repo
         state: absent
       register: repo_gone
 
     - name: Dropping it again is a no-op
-      plakarkorp.plakar.repository:
+      plakarkorp.plakar.store:
         name: Ansible repo
         state: absent
       register: repo_gone_again
@@ -286,4 +220,4 @@
         msg:
           - "backup {{ backup.job.id }}: {{ backup.job.status }}"
           - "restore {{ restore.job.id }}: {{ restore.job.status }} (snapshot {{ restore.snapshot_id }})"
-          - "declarative round-trip: repository, connector, sla_template, sla_contract all green"
+          - "declarative round-trip: store and connector all green"

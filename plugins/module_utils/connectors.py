@@ -2,7 +2,7 @@
 # Copyright (c) 2026 PlakarKorp
 # ISC License (see LICENSE)
 
-# Shared implementation of the connector and repository modules: name-keyed
+# Shared implementation of the connector and store modules: name-keyed
 # idempotency (list, match by name, diff only what the playbook sets), the
 # create/update/delete flow, and the v1 quirk that update is POST on the
 # connector id with a full create-shaped body — so an update merges the
@@ -16,7 +16,7 @@ from ansible_collections.plakarkorp.plakar.plugins.module_utils.client import Pl
 
 
 def connector_options():
-    """Options shared by the connector and repository modules."""
+    """Options shared by the connector and store modules."""
     return dict(
         name=dict(type='str', required=True),
         state=dict(type='str', default='present', choices=['present', 'absent']),
@@ -78,7 +78,7 @@ def _slim(connector):
     }
 
 
-def run_connector_module(module, client, kind, repository=False):
+def run_connector_module(module, client, kind, store=False):
     params = module.params
     name = params['name']
 
@@ -123,7 +123,7 @@ def run_connector_module(module, client, kind, repository=False):
             body=body, ok=(200, 201))
 
         initialized = False
-        if repository and params.get('initialize'):
+        if store and params.get('initialize'):
             init_body = {}
             if params.get('compression'):
                 init_body['compression'] = params['compression']
