@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 *.tar.gz
 tests/output/
+tests/integration/stack/pkgs/
+tests/integration/stack/.apikey

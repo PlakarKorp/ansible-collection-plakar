@@ -3,9 +3,11 @@
 #   PLAKAR_API_URL=http://localhost:8080 PLAKAR_API_KEY=pcp_ak_... \
 #     ansible-playbook tests/integration/e2e.yml
 #
-# Assumes the plakman compose stack's seeded connectors (S3 Source, S3 Store,
-# S3 Destination) and a service account holding the operator role. Override
-# the names with -e for another environment.
+# Assumes the connectors setup.yml provisions (S3 Source, S3 Store,
+# S3 Destination) and a service account holding the owner role -- the
+# hermetic stack under tests/integration/stack/ provides all of it, and the
+# plakman dev compose stack's seed data matches too. Override the names with
+# -e for another environment.
 ---
 - name: plakarkorp.plakar end-to-end
   hosts: localhost
@@ -14,6 +16,11 @@
     source_name: S3 Source
     store_name: S3 Store
     destination_name: S3 Destination
+    # The resource the declarative modules attach to; the hermetic stack's
+    # setup.yml declares it. On the plakman dev stack, override with
+    # -e store_resource='Silent Frost' -e source_resource='Novel Core'.
+    store_resource: CI minio
+    source_resource: CI minio
 
   tasks:
     - name: Backup in check mode does not run anything
@@ -277,7 +284,7 @@
       plakarkorp.plakar.store:
         name: Ansible repo
         integration: s3
-        resource: Silent Frost
+        resource: "{{ store_resource }}"
         environment: production
         compression: LZ4
         fields:
@@ -303,7 +310,7 @@
         name: Ansible repo
         protocol: s3
         integration: s3
-        resource: Silent Frost
+        resource: "{{ store_resource }}"
         environment: production
         fields:
           root: /ansible-repo
@@ -329,7 +336,7 @@
         type: source
         protocol: s3
         integration: s3
-        resource: Novel Core
+        resource: "{{ source_resource }}"
         environment: production
         data_classes: [database]
         fields:

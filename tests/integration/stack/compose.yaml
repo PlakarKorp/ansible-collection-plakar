@@ -1,0 +1,70 @@
+# Hermetic plakman stack for the e2e playbook: postgres + minio + plakman,
+# no parent orkestrator, no license.
+#
+# The first admin comes from `plakman bootstrap-root` (a one-shot `docker
+# compose run` after the daemon is up), and the s3 integration package is
+# sideloaded: the workflow downloads the .ptar into ./pkgs before `up`, so
+# installing it never reaches the (license-authenticated) plugin feed.
+#
+#   PLAKMAN_IMAGE=ghcr.io/plakarkorp/plakman:<tag> docker compose up -d
+#
+# Requires a plakman "-devel" image (the prod image plus bootstrap-root,
+# published alongside each release tag; the customer image refuses the
+# command on purpose).
+
+volumes:
+  db: {}
+  state: {}
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: plakman
+      POSTGRES_PASSWORD: plakman
+      POSTGRES_DB: plakman
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plakman -d plakman"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: minio/minio
+    command: server /data
+    ports:
+      - "9000:9000"
+
+  # Buckets for the three connectors, plus a couple of objects in /source so a
+  # backup has something to back up.
+  minio-setup:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        for i in $$(seq 1 30); do
+          mc alias set local http://minio:9000 minioadmin minioadmin && break
+          sleep 2
+        done
+        mc mb --ignore-existing local/source local/store local/store-cold local/destination
+        printf 'hello from the ansible e2e\n' > /tmp/e2e-1.txt
+        printf 'second file\n' > /tmp/e2e-2.txt
+        mc cp /tmp/e2e-1.txt /tmp/e2e-2.txt local/source/
+
+  plakman:
+    image: ${PLAKMAN_IMAGE:-ghcr.io/plakarkorp/plakman:latest-devel}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - state:/var/lib/plakman
+      - ./plakman.yaml:/etc/plakman.yaml:ro
+      # Sideloaded integration packages: anything dropped here counts as
+      # installed, so the API's install step never fetches from the feed.
+      - ./pkgs:/var/lib/plakman/pkgs/integrations
+    ports:
+      - "8080:8080"

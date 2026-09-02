@@ -1,22 +1,36 @@
 name: Integration
 
-# The e2e playbook needs a live plakman deployment. Hermetic compose-in-CI
-# waits on a self-contained plakman test stack (today's dev stack needs a
-# parent orkestrator to enroll its first admin, which is more than a CI job
-# should replicate) — until then this runs on demand against a stack you
-# point it at, with PLAKAR_API_URL / PLAKAR_API_KEY repository secrets or a
-# manual URL input plus the key secret.
+# Hermetic e2e: bring up postgres + minio + plakman from compose, seed the
+# first admin with `plakman bootstrap-root` (no parent orkestrator, no
+# license), provision connectors and an API key with setup.yml, then run the
+# e2e playbook against it.
+#
+# Needs a plakman "-devel" image (prod plus bootstrap-root -- the customer
+# image refuses the command on purpose), and the runner
+# must be able to pull it: either make the ghcr.io/plakarkorp/plakman package
+# readable by this repository (or public), or set a GHCR_PULL_TOKEN secret
+# with read:packages.
+#
+# The s3 integration package is sideloaded: downloaded from the public
+# versioned feed into the pkgs volume before the stack starts, so the install
+# step never needs the license-authenticated fetch.
 on:
   workflow_dispatch:
     inputs:
-      api_url:
-        description: "Plakar API URL (defaults to the PLAKAR_API_URL secret)"
+      plakman_image:
+        description: "plakman image (defaults to ghcr.io/plakarkorp/plakman:latest-devel)"
         required: false
         type: string
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    env:
+      PLAKMAN_IMAGE: ${{ inputs.plakman_image || 'ghcr.io/plakarkorp/plakman:latest-devel' }}
+      PLAKAR_API_URL: http://localhost:8080
+    defaults:
+      run:
+        working-directory: ansible_collections/plakarkorp/plakar
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,10 +43,66 @@ jobs:
       - name: Install ansible-core
         run: pip install ansible-core
 
-      - name: End-to-end playbook
-        working-directory: ansible_collections/plakarkorp/plakar
+      - name: Log in to GHCR
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # @v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # The enterprise s3 .ptar is served publicly from the versioned feed;
+      # dropped into the pkgs volume it counts as installed, so the API's
+      # install step never reaches the license-authenticated fetch path.
+      - name: Sideload the s3 integration package
+        working-directory: ansible_collections/plakarkorp/plakar/tests/integration/stack
+        run: |
+          mkdir -p pkgs
+          entry=$(curl -sf https://api.plakar.io/v1/integrations/integrations-v1.0.0.json \
+            | jq -c '[.integrations[] | select(.name=="s3" and .edition=="enterprise")] | last')
+          version=$(echo "$entry" | jq -r .version)
+          api=$(echo "$entry" | jq -r .api)
+          echo "s3 $version (plugin api $api)"
+          curl -sf -o "pkgs/s3_${version}_linux_amd64.ptar" \
+            "https://plakar.io/dist/plugins/kloset/enterprise/${api}/s3/s3_${version}_linux_amd64.ptar"
+
+      - name: Start the stack
+        working-directory: ansible_collections/plakarkorp/plakar/tests/integration/stack
+        run: docker compose up -d --quiet-pull
+
+      - name: Wait for plakman
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf "$PLAKAR_API_URL/api/v1/health/ready" && exit 0
+            sleep 2
+          done
+          echo "plakman never became ready"
+          exit 1
+
+      - name: Bootstrap the deployment root
+        working-directory: ansible_collections/plakarkorp/plakar/tests/integration/stack
+        run: |
+          docker compose run --rm -e PLAKMAN_BOOTSTRAP_PASSWORD='CIbootstrap-42!' \
+            plakman plakman bootstrap-root \
+            -config /etc/plakman.yaml -email admin@example.com
+
+      - name: Provision connectors and the API key
         env:
           ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}
-          PLAKAR_API_URL: ${{ inputs.api_url || secrets.PLAKAR_API_URL }}
-          PLAKAR_API_KEY: ${{ secrets.PLAKAR_API_KEY }}
-        run: ansible-playbook tests/integration/e2e.yml
+        run: ansible-playbook tests/integration/setup.yml
+
+      - name: End-to-end playbook
+        env:
+          ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}
+        run: |
+          export PLAKAR_API_KEY=$(cat tests/integration/stack/.apikey)
+          ansible-playbook tests/integration/e2e.yml
+
+      - name: Stack logs
+        if: failure()
+        working-directory: ansible_collections/plakarkorp/plakar/tests/integration/stack
+        run: docker compose logs --tail 200
+
+      - name: Tear down
+        if: always()
+        working-directory: ansible_collections/plakarkorp/plakar/tests/integration/stack
+        run: docker compose down -v
