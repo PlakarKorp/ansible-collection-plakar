@@ -83,12 +83,24 @@ the playbook sets — anything else keeps its server-side value.
         store: S3 Store
         destination: Recovery target
 
+    - name: Keep a daily snapshot for a week, a monthly one for a year
+      plakarkorp.plakar.prune:
+        store: S3 Store
+        retention:
+          day: 7
+          per_day: 1
+          month: 12
+          per_month: 1
+
     - name: Any failed backups today?
       plakarkorp.plakar.job_info:
         task_type: backup
         status: failed
       register: failed
 ```
+
+Prune in check mode deletes nothing and reports what the rule would delete,
+keep, and hold back (legal holds are never deleted).
 
 Backups and restores are asynchronous server-side: the modules poll until the
 job stops (`wait: true`, the default, `wait_timeout: 600`), or return
