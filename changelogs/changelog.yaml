@@ -2,10 +2,12 @@ ancestor: null
 releases:
   0.1.0:
     changes:
-      release_summary: 'First release of the collection: trigger backups and restores,
-        query job
+      release_summary: 'First release of the collection: trigger backups, restores
+        and store
 
-        state, and declare stores and connectors against the Plakar management API.
+        syncs, query job state, and declare stores and connectors against the
+
+        Plakar management API.
 
         '
     fragments:
@@ -25,5 +27,8 @@ releases:
       namespace: ''
     - description: Manage Plakar stores.
       name: store
+      namespace: ''
+    - description: Sync snapshots between Plakar stores.
+      name: sync
       namespace: ''
     release_date: '2026-09-02'

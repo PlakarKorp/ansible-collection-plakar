@@ -34,6 +34,11 @@ plugins:
       name: store
       namespace: ''
       version_added: 0.1.0
+    sync:
+      description: Sync snapshots between Plakar stores
+      name: sync
+      namespace: ''
+      version_added: 0.1.0
   netconf: {}
   shell: {}
   strategy: {}

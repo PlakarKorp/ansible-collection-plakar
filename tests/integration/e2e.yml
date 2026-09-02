@@ -57,6 +57,18 @@
           - restore.job.status == 'succeeded'
           - restore.snapshot_id | length > 0
 
+    - name: Sync the store into the cold store
+      plakarkorp.plakar.sync:
+        store: "{{ store_name }}"
+        to_store: S3 Store (cold)
+      register: sync
+
+    - name: Sync succeeded
+      ansible.builtin.assert:
+        that:
+          - sync.changed
+          - sync.job.status == 'succeeded'
+
     - name: Look the backup job up by id, with its log
       plakarkorp.plakar.job_info:
         job_id: "{{ backup.job.id }}"
