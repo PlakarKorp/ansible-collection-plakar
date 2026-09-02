@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible: [stable-2.17, stable-2.18]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/plakarkorp/plakar
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ansible-core
+        run: pip install "https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz"
+
+      - name: Sanity
+        working-directory: ansible_collections/plakarkorp/plakar
+        run: ansible-test sanity --requirements --python 3.12 -v
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ansible-core
+        run: pip install ansible-core
+
+      - name: Build the collection artifact
+        run: ansible-galaxy collection build
+
+  # Integration needs a live plakman stack. Compose-in-CI lands once plakman
+  # publishes a pullable image (see the master plan, step 4); until then the
+  # e2e playbook runs against a local dev stack:
+  #   PLAKAR_API_URL=... PLAKAR_API_KEY=... ansible-playbook tests/integration/e2e.yml

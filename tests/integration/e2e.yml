@@ -1,0 +1,121 @@
+# End-to-end: backup, restore, job_info against a live stack.
+#
+#   PLAKAR_API_URL=http://localhost:8080 PLAKAR_API_KEY=pcp_ak_... \
+#     ansible-playbook tests/integration/e2e.yml
+#
+# Assumes the plakman compose stack's seeded connectors (S3 Source, S3 Store,
+# S3 Destination) and a service account holding the operator role. Override
+# the names with -e for another environment.
+---
+- name: plakarkorp.plakar end-to-end
+  hosts: localhost
+  gather_facts: false
+  vars:
+    source_name: S3 Source
+    store_name: S3 Store
+    destination_name: S3 Destination
+
+  tasks:
+    - name: Backup in check mode does not run anything
+      plakarkorp.plakar.backup:
+        source: "{{ source_name }}"
+        store: "{{ store_name }}"
+      check_mode: true
+      register: dry
+
+    - name: Check mode resolved the connectors
+      ansible.builtin.assert:
+        that:
+          - dry.changed
+          - dry.source_id is defined
+          - dry.at_id is not defined
+
+    - name: Backup
+      plakarkorp.plakar.backup:
+        source: "{{ source_name }}"
+        store: "{{ store_name }}"
+        labels: [ansible-e2e]
+      register: backup
+
+    - name: Backup succeeded
+      ansible.builtin.assert:
+        that:
+          - backup.changed
+          - backup.job.status == 'succeeded'
+          - backup.at_id is defined
+
+    - name: Restore the latest snapshot
+      plakarkorp.plakar.restore:
+        store: "{{ store_name }}"
+        destination: "{{ destination_name }}"
+      register: restore
+
+    - name: Restore succeeded
+      ansible.builtin.assert:
+        that:
+          - restore.changed
+          - restore.job.status == 'succeeded'
+          - restore.snapshot_id | length > 0
+
+    - name: Look the backup job up by id, with its log
+      plakarkorp.plakar.job_info:
+        job_id: "{{ backup.job.id }}"
+        include_log: true
+      register: one
+
+    - name: The job is found and carries a log
+      ansible.builtin.assert:
+        that:
+          - one.jobs | length == 1
+          - one.jobs[0].status == 'succeeded'
+          - one.jobs[0].task_type == 'backup'
+          - one.jobs[0].log | length > 0
+
+    - name: List recent succeeded backups
+      plakarkorp.plakar.job_info:
+        task_type: backup
+        status: succeeded
+        limit: 10
+      register: listing
+
+    - name: The listing contains our job
+      ansible.builtin.assert:
+        that:
+          - listing.total >= 1
+          - backup.job.id in (listing.jobs | map(attribute='id') | list)
+
+    - name: Unknown connector name fails with the visible names
+      plakarkorp.plakar.backup:
+        source: does-not-exist
+        store: "{{ store_name }}"
+      register: missing
+      failed_when: missing is not failed
+
+    - name: Fire and forget, then poll
+      plakarkorp.plakar.restore:
+        store: "{{ store_name }}"
+        destination: "{{ destination_name }}"
+        wait: false
+      register: bg
+
+    - name: Poll until the background restore stops
+      plakarkorp.plakar.job_info:
+        at_id: "{{ bg.at_id }}"
+      register: bg_info
+      until: >-
+        bg_info.jobs | length > 0
+        and bg_info.jobs[0].stopped_at is not none
+      retries: 60
+      delay: 2
+
+    - name: The background restore succeeded
+      ansible.builtin.assert:
+        that:
+          - bg_info.jobs[0].status == 'succeeded'
+          - bg_info.jobs[0].task_type == 'restore'
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "backup {{ backup.job.id }}: {{ backup.job.status }}"
+          - "restore {{ restore.job.id }}: {{ restore.job.status }} (snapshot {{ restore.snapshot_id }})"
