@@ -2,10 +2,8 @@
 
 Drive [Plakar](https://plakar.io) from Ansible playbooks: trigger backups and
 restores, query job state, and declare stores and connectors through the
-Plakar management API. In this first version the protection policy IS the
-task a playbook runs — backups and restores you trigger and schedule from your
-own automation; SLA templates and contracts stay authored in Plakar. Built to run inside Red Hat
-Ansible Automation Platform (or plain ansible-core >= 2.15).
+Plakar management API. Built to run inside Red Hat Ansible Automation
+Platform (or plain ansible-core >= 2.15).
 
 All modules talk HTTPS to the management API; nothing runs on the managed
 hosts, so plays target `localhost` (or use `delegate_to`).
