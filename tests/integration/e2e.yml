@@ -161,6 +161,104 @@
           - bg_info.jobs[0].status == 'succeeded'
           - bg_info.jobs[0].task_type == 'restore'
 
+    # --- prune: real deletion and filters, on a lab store ------------------
+    - name: Clean slate
+      plakarkorp.plakar.store:
+        name: Prune lab
+        state: absent
+
+    - name: A store of our own
+      plakarkorp.plakar.store:
+        name: Prune lab
+        integration: s3
+        resource: Silent Frost
+        environment: production
+        fields:
+          passphrase: correcthorsebatterystaple
+          access_key: minioadmin
+          secret_access_key: minioadmin
+          port: 9000
+          root: /prune-lab
+          storage_class: STANDARD
+          use_tls: false
+          tls_insecure_no_verify: false
+          virtual_host: false
+
+    - name: Two nightly backups and a keeper
+      plakarkorp.plakar.backup:
+        source: S3 Source
+        store: Prune lab
+        labels: "{{ item }}"
+      loop:
+        - [nightly]
+        - [nightly]
+        - [keepme]
+
+    # Store now holds: nightly, nightly, keepme — all today.
+
+    - name: Preview — only nightly considered, keep one per day
+      plakarkorp.plakar.prune:
+        store: Prune lab
+        retention: {day: 1, per_day: 1}
+        tags: [nightly]
+      check_mode: true
+      register: preview
+
+    - name: The preview would delete exactly one nightly
+      ansible.builtin.assert:
+        that:
+          - preview.changed
+          - preview.deleted | length == 1
+          - preview.kept | length >= 1
+
+    - name: Prune for real
+      plakarkorp.plakar.prune:
+        store: Prune lab
+        retention: {day: 1, per_day: 1}
+        tags: [nightly]
+      register: pruned
+
+    - name: One nightly gone, deletion job ran to completion
+      ansible.builtin.assert:
+        that:
+          - pruned.changed
+          - pruned.deleted | length == 1
+          - pruned.job.status == 'succeeded'
+
+    - name: Pruning again under the same rule is a no-op
+      plakarkorp.plakar.prune:
+        store: Prune lab
+        retention: {day: 1, per_day: 1}
+        tags: [nightly]
+      register: again
+      failed_when: again.changed
+
+    # Store now holds: nightly, keepme. The same day-1/per-day-1 rule over
+    # both would delete one — unless ignore_tags takes the keeper out of
+    # consideration, leaving a single snapshot that the rule keeps.
+    - name: Without ignore_tags the rule would delete one (control)
+      plakarkorp.plakar.prune:
+        store: Prune lab
+        retention: {day: 1, per_day: 1}
+      check_mode: true
+      register: control
+      failed_when: control.deleted | length != 1
+
+    - name: With ignore_tags the keeper is out of reach
+      plakarkorp.plakar.prune:
+        store: Prune lab
+        retention: {day: 1, per_day: 1}
+        filters:
+          ignore_tags: [keepme]
+      check_mode: true
+      register: spare
+      failed_when: spare.deleted | length != 0
+
+    - name: Tear the lab down
+      plakarkorp.plakar.store:
+        name: Prune lab
+        state: absent
+
     # --- declarative resources (step 3) -----------------------------------
     # Clean slate first, so a re-run over a previously aborted play still
     # asserts real creations below.
