@@ -91,6 +91,10 @@ the playbook sets — anything else keeps its server-side value.
           per_day: 1
           month: 12
           per_month: 1
+        group_by: dataset          # the rule holds per source, not store-wide
+        tags: [nightly]            # only the nightly snapshots
+        filters:
+          ignore_tags: [do-not-prune]
 
     - name: Any failed backups today?
       plakarkorp.plakar.job_info:
