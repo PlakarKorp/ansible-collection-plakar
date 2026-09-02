@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2026 PlakarKorp
-# GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
+# ISC License (see LICENSE)
 
 # The one place that knows the wire. Modules speak in names and intents;
 # everything v1-shaped (verb irregularities, the at_id poll loop, badge

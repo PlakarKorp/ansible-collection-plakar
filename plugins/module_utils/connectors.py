@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2026 PlakarKorp
-# GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
+# ISC License (see LICENSE)
 
 # Shared implementation of the connector and repository modules: name-keyed
 # idempotency (list, match by name, diff only what the playbook sets), the

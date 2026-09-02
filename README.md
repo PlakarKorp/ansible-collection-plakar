@@ -137,4 +137,6 @@ ansible-test sanity --docker default
 
 ## License
 
-GPL-3.0-or-later (the Ansible ecosystem requirement for modules).
+ISC, like Plakar itself. ansible-core's sanity suite conventionally expects a
+GPLv3 header on module files; the collection deviates deliberately (ISC is
+GPL-compatible) and carries the sanity-ignore entries for it.

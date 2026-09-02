@@ -6,7 +6,7 @@ authors:
   - PlakarKorp <support@plakar.io>
 description: Drive Plakar from Ansible playbooks — trigger backups and restores, manage policies and repositories, query job state.
 license:
-  - GPL-3.0-or-later
+  - ISC
 tags:
   - backup
   - restore
