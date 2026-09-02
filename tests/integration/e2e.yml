@@ -82,10 +82,11 @@
 
     # A generous rule: proves the wiring both ways without eating the shared
     # dev stack's snapshots.
-    - name: Preview a prune (check mode)
+    - name: Preview a prune, partitioned per source (check mode)
       plakarkorp.plakar.prune:
         store: "{{ store_name }}"
         retention: {year: 100, per_year: 1000}
+        group_by: dataset
       check_mode: true
       register: prune_preview
 
@@ -173,10 +174,10 @@
             name: Ansible repo
             state: absent
 
+    # No protocol: it defaults to the integration name.
     - name: Create a managed store
       plakarkorp.plakar.store:
         name: Ansible repo
-        protocol: s3
         integration: s3
         resource: Silent Frost
         environment: production

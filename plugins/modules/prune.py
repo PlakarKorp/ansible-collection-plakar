@@ -41,11 +41,26 @@ options:
         one snapshot a day for a week and one a month for a year."
     type: dict
     required: true
-  labels:
+  tags:
     description:
-      - Only consider snapshots carrying these labels.
+      - Only consider snapshots carrying these tags.
     type: list
     elements: str
+  group_by:
+    description:
+      - Partition the matched snapshots before applying the rule, so retention
+        is honored per group instead of across the whole store — for example
+        V(dataset) keeps the rule per source instead of globally.
+    type: str
+    choices: [name, category, environment, perimeter, job, dataset, data-class, tag, origin, type, root]
+  filters:
+    description:
+      - Further narrowing, passed to the API's locate filters — a mapping of
+        C(ignore_tags), C(before), C(since), C(name), C(category),
+        C(environment), C(perimeter), C(job), C(dataset), C(latest), C(ids),
+        C(types), C(origins), C(roots), C(data_classes).
+      - O(tags) is shorthand for C(filters.tags); both may be set and merge.
+    type: dict
   wait:
     description:
       - Whether to wait for the deletion job to finish when there is
@@ -69,12 +84,21 @@ EXAMPLES = r'''
       month: 12
       per_month: 1
 
-- name: See what a tighter rule would delete, without deleting
+- name: Retention per source rather than across the whole store
+  plakarkorp.plakar.prune:
+    store: S3 Store
+    retention:
+      year: 2
+      per_year: 2
+    group_by: dataset
+
+- name: Only the nightly snapshots, and see what would go, without deleting
   plakarkorp.plakar.prune:
     store: S3 Store
     retention:
       day: 3
       per_day: 1
+    tags: [nightly]
   check_mode: true
   register: preview
 '''
@@ -113,13 +137,22 @@ from ansible_collections.plakarkorp.plakar.plugins.module_utils.client import (
 RETENTION_KEYS = ('minute', 'per_minute', 'hour', 'per_hour', 'day', 'per_day',
                   'week', 'per_week', 'month', 'per_month', 'year', 'per_year')
 
+FILTER_KEYS = ('tags', 'ignore_tags', 'before', 'since', 'name', 'category',
+               'environment', 'perimeter', 'job', 'dataset', 'latest', 'ids',
+               'types', 'origins', 'roots', 'data_classes')
+
 
 def main():
     spec = argument_spec()
     spec.update(
         store=dict(type='str', required=True),
         retention=dict(type='dict', required=True),
-        labels=dict(type='list', elements='str', required=False),
+        tags=dict(type='list', elements='str', required=False),
+        group_by=dict(type='str', required=False,
+                      choices=['name', 'category', 'environment', 'perimeter',
+                               'job', 'dataset', 'data-class', 'tag', 'origin',
+                               'type', 'root']),
+        filters=dict(type='dict', required=False),
         wait=dict(type='bool', default=True),
         wait_timeout=dict(type='int', default=600),
     )
@@ -133,10 +166,22 @@ def main():
     if unknown:
         module.fail_json(msg='unknown retention option(s): %s — valid: %s'
                              % (', '.join(unknown), ', '.join(RETENTION_KEYS)))
+    filters = dict(params.get('filters') or {})
+    unknown = sorted(set(filters) - set(FILTER_KEYS))
+    if unknown:
+        module.fail_json(msg='unknown filter(s): %s — valid: %s'
+                             % (', '.join(unknown), ', '.join(FILTER_KEYS)))
+    if params.get('tags'):
+        filters['tags'] = sorted(set(filters.get('tags') or []) | set(params['tags']))
 
     body = {k: int(v) for k, v in params['retention'].items()}
-    if params.get('labels'):
-        body['labels'] = params['labels']
+    locate = {}
+    if filters:
+        locate['filters'] = filters
+    if params.get('group_by'):
+        locate['group_by'] = params['group_by']
+    if locate:
+        body['locate'] = locate
 
     try:
         store = client.connector_by_name('store', params['store'])

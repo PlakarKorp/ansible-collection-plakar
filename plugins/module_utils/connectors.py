@@ -95,7 +95,7 @@ def run_connector_module(module, client, kind, store=False):
     desired_fields = _fields_to_api(params.get('fields')) if params.get('fields') else {}
 
     if current is None:
-        for required in ('protocol', 'integration', 'resource'):
+        for required in ('integration', 'resource'):
             if not params.get(required):
                 module.fail_json(msg='%s is required to create connector %r' % (required, name))
         integration = client.installed_integration(params['integration'])
@@ -104,7 +104,9 @@ def run_connector_module(module, client, kind, store=False):
         body = {
             'name': name,
             'type': kind,
-            'protocol': params['protocol'],
+            # For the standard integrations the protocol carries the same
+            # name; spelling it out is only needed when they differ.
+            'protocol': params.get('protocol') or params['integration'],
             'integration': {'id': integration['id']},
             'urn_id': resource['urn_id'],
             'fields': desired_fields,

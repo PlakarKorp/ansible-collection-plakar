@@ -40,8 +40,9 @@ options:
     choices: [present, absent]
   protocol:
     description:
-      - Protocol of the integration, for example C(s3) or C(sftp).
-      - Required when creating.
+      - Protocol spoken to the resource, for example C(s3) or C(sftp).
+      - Defaults to the integration name, which matches for the standard
+        integrations; set it only when they differ.
     type: str
   integration:
     description:

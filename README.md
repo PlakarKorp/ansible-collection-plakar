@@ -111,10 +111,8 @@ Declaring the estate looks like this:
 ```yaml
 - plakarkorp.plakar.store:
     name: Offsite S3
-    protocol: s3
     integration: s3
     resource: Ample Sky          # inventory resource, by URN or name
-    compression: ZSTD
     fields:
       passphrase: "{{ vault_repo_passphrase }}"
       access_key: "{{ vault_s3_access_key }}"
