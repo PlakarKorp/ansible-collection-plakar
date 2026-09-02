@@ -10,14 +10,15 @@ v0.1.0
 Release Summary
 ---------------
 
-First release of the collection: trigger backups, restores and store
-syncs, query job state, and declare stores and connectors against the
-Plakar management API.
+First release of the collection: trigger backups, restores, store syncs
+and integrity checks, query job state, and declare stores and connectors
+against the Plakar management API.
 
 New Modules
 -----------
 
 - plakarkorp.plakar.backup - Trigger a Plakar backup.
+- plakarkorp.plakar.check - Verify the integrity of Plakar snapshots.
 - plakarkorp.plakar.connector - Manage Plakar source and destination connectors.
 - plakarkorp.plakar.job_info - Query Plakar job state.
 - plakarkorp.plakar.restore - Trigger a Plakar restore.

@@ -48,6 +48,7 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.backup` | Trigger a backup of a source into a store |
 | `plakarkorp.plakar.restore` | Restore a snapshot from a store onto a destination |
 | `plakarkorp.plakar.sync` | Sync snapshots from one store into another |
+| `plakarkorp.plakar.check` | Verify the integrity of a store's snapshots |
 | `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
 | `plakarkorp.plakar.store` | Declare stores (initialized on creation) |
 | `plakarkorp.plakar.connector` | Declare source and destination connectors |

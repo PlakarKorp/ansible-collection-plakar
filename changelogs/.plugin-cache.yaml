@@ -14,6 +14,11 @@ plugins:
       name: backup
       namespace: ''
       version_added: 0.1.0
+    check:
+      description: Verify the integrity of Plakar snapshots
+      name: check
+      namespace: ''
+      version_added: 0.1.0
     connector:
       description: Manage Plakar source and destination connectors
       name: connector

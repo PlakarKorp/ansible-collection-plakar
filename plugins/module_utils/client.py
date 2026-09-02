@@ -230,8 +230,10 @@ class PlakarClient(object):
 
     # --- one-shot runs --------------------------------------------------------
 
-    def run_task(self, task_type, origin_id, target_id, config=None, edge_tags=None):
-        body = {'type': task_type, 'origin_id': origin_id, 'target_id': target_id}
+    def run_task(self, task_type, origin_id, target_id=None, config=None, edge_tags=None):
+        body = {'type': task_type, 'origin_id': origin_id}
+        if target_id:
+            body['target_id'] = target_id
         if config:
             body['config'] = config
         if edge_tags:

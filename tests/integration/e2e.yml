@@ -69,6 +69,17 @@
           - sync.changed
           - sync.job.status == 'succeeded'
 
+    - name: Check the store's integrity
+      plakarkorp.plakar.check:
+        store: "{{ store_name }}"
+      register: checked
+
+    - name: Check succeeded
+      ansible.builtin.assert:
+        that:
+          - checked.changed
+          - checked.job.status == 'succeeded'
+
     - name: Look the backup job up by id, with its log
       plakarkorp.plakar.job_info:
         job_id: "{{ backup.job.id }}"

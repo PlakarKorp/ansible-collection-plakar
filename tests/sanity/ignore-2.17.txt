@@ -4,3 +4,4 @@ plugins/modules/job_info.py validate-modules:missing-gplv3-license
 plugins/modules/connector.py validate-modules:missing-gplv3-license
 plugins/modules/store.py validate-modules:missing-gplv3-license
 plugins/modules/sync.py validate-modules:missing-gplv3-license
+plugins/modules/check.py validate-modules:missing-gplv3-license
