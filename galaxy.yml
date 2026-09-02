@@ -17,3 +17,5 @@ issues: https://github.com/PlakarKorp/ansible-collection-plakar/issues
 build_ignore:
   - .github
   - tests
+  - execution-environment.yml
+  - changelogs/fragments

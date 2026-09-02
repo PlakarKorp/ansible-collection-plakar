@@ -1,0 +1,63 @@
+name: Release
+
+# Tag vX.Y.Z (matching galaxy.yml's version) to cut a release: sanity gates,
+# the artifact is built once, published to Ansible Galaxy, and attached to a
+# GitHub release. Needs the GALAXY_API_KEY repository secret (from
+# galaxy.ansible.com, under the plakarkorp namespace).
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/plakarkorp/plakar
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ansible-core
+        run: pip install ansible-core
+
+      - name: Tag matches galaxy.yml
+        working-directory: ansible_collections/plakarkorp/plakar
+        run: |
+          tag="${GITHUB_REF#refs/tags/v}"
+          version="$(sed -n 's/^version: //p' galaxy.yml)"
+          if [ "$tag" != "$version" ]; then
+            echo "tag v$tag does not match galaxy.yml version $version" >&2
+            exit 1
+          fi
+
+      - name: Sanity
+        working-directory: ansible_collections/plakarkorp/plakar
+        run: ansible-test sanity --requirements --python 3.12 -v
+
+      - name: Build
+        working-directory: ansible_collections/plakarkorp/plakar
+        run: ansible-galaxy collection build
+
+      - name: Publish to Ansible Galaxy
+        working-directory: ansible_collections/plakarkorp/plakar
+        run: |
+          ansible-galaxy collection publish \
+            plakarkorp-plakar-"${GITHUB_REF#refs/tags/v}".tar.gz \
+            --api-key "${{ secrets.GALAXY_API_KEY }}"
+
+      - name: GitHub release with the artifact
+        working-directory: ansible_collections/plakarkorp/plakar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF#refs/tags/}" \
+            plakarkorp-plakar-*.tar.gz \
+            --title "${GITHUB_REF#refs/tags/}" \
+            --notes "See CHANGELOG.rst for what changed."

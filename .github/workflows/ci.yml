@@ -43,7 +43,5 @@ jobs:
       - name: Build the collection artifact
         run: ansible-galaxy collection build
 
-  # Integration needs a live plakman stack. Compose-in-CI lands once plakman
-  # publishes a pullable image (see the master plan, step 4); until then the
-  # e2e playbook runs against a local dev stack:
-  #   PLAKAR_API_URL=... PLAKAR_API_KEY=... ansible-playbook tests/integration/e2e.yml
+  # Integration runs on demand via integration.yml against a live stack;
+  # hermetic compose-in-CI waits on a self-contained plakman test stack.

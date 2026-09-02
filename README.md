@@ -1,11 +1,29 @@
 # Ansible Collection — plakarkorp.plakar
 
 Drive [Plakar](https://plakar.io) from Ansible playbooks: trigger backups and
-restores, and query job state through the Plakar management API. Built to run
-inside Red Hat Ansible Automation Platform (or plain ansible-core >= 2.15).
+restores, query job state, and declare repositories, connectors and SLA
+policies through the Plakar management API. Built to run inside Red Hat
+Ansible Automation Platform (or plain ansible-core >= 2.15).
 
 All modules talk HTTPS to the management API; nothing runs on the managed
 hosts, so plays target `localhost` (or use `delegate_to`).
+
+## Install
+
+```sh
+ansible-galaxy collection install plakarkorp.plakar
+```
+
+For AAP, add the collection to your execution environment — this repo ships a
+ready [`execution-environment.yml`](execution-environment.yml):
+
+```sh
+ansible-builder build -t plakar-ee .
+```
+
+then point your AAP job templates at the resulting image, and put
+`PLAKAR_API_URL` / `PLAKAR_API_KEY` in a credential type or the job's
+environment.
 
 ## Setup
 

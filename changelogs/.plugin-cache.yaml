@@ -1,0 +1,51 @@
+objects: {}
+plugins:
+  become: {}
+  cache: {}
+  callback: {}
+  cliconf: {}
+  connection: {}
+  httpapi: {}
+  inventory: {}
+  lookup: {}
+  module:
+    backup:
+      description: Trigger a Plakar backup
+      name: backup
+      namespace: ''
+      version_added: 0.1.0
+    connector:
+      description: Manage Plakar source and destination connectors
+      name: connector
+      namespace: ''
+      version_added: 0.1.0
+    job_info:
+      description: Query Plakar job state
+      name: job_info
+      namespace: ''
+      version_added: 0.1.0
+    repository:
+      description: Manage Plakar backup repositories
+      name: repository
+      namespace: ''
+      version_added: 0.1.0
+    restore:
+      description: Trigger a Plakar restore
+      name: restore
+      namespace: ''
+      version_added: 0.1.0
+    sla_contract:
+      description: Bind a Plakar SLA template to a source
+      name: sla_contract
+      namespace: ''
+      version_added: 0.1.0
+    sla_template:
+      description: Manage Plakar SLA templates
+      name: sla_template
+      namespace: ''
+      version_added: 0.1.0
+  netconf: {}
+  shell: {}
+  strategy: {}
+  vars: {}
+version: 0.1.0

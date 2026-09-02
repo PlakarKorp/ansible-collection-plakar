@@ -1,0 +1,19 @@
+# Execution environment for AAP: an image with ansible-core and this
+# collection, built with ansible-builder:
+#
+#   ansible-builder build -t plakar-ee .
+#
+# The collection has no Python or system dependencies beyond ansible-core
+# itself — every module talks plain HTTPS through ansible.module_utils.urls.
+version: 3
+
+images:
+  base_image:
+    # Swap for registry.redhat.io/ansible-automation-platform-25/ee-minimal-rhel9
+    # (or your AAP version's equivalent) on a subscribed cluster.
+    name: quay.io/ansible/ee-minimal:latest
+
+dependencies:
+  galaxy:
+    collections:
+      - name: plakarkorp.plakar

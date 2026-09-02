@@ -1,0 +1,38 @@
+name: Integration
+
+# The e2e playbook needs a live plakman deployment. Hermetic compose-in-CI
+# waits on a self-contained plakman test stack (today's dev stack needs a
+# parent orkestrator to enroll its first admin, which is more than a CI job
+# should replicate) — until then this runs on demand against a stack you
+# point it at, with PLAKAR_API_URL / PLAKAR_API_KEY repository secrets or a
+# manual URL input plus the key secret.
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Plakar API URL (defaults to the PLAKAR_API_URL secret)"
+        required: false
+        type: string
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/plakarkorp/plakar
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ansible-core
+        run: pip install ansible-core
+
+      - name: End-to-end playbook
+        working-directory: ansible_collections/plakarkorp/plakar
+        env:
+          ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}
+          PLAKAR_API_URL: ${{ inputs.api_url || secrets.PLAKAR_API_URL }}
+          PLAKAR_API_KEY: ${{ secrets.PLAKAR_API_KEY }}
+        run: ansible-playbook tests/integration/e2e.yml
