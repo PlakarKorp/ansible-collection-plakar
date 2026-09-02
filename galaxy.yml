@@ -1,0 +1,19 @@
+namespace: plakarkorp
+name: plakar
+version: 0.1.0
+readme: README.md
+authors:
+  - PlakarKorp <support@plakar.io>
+description: Drive Plakar from Ansible playbooks — trigger backups and restores, manage policies and repositories, query job state.
+license:
+  - GPL-3.0-or-later
+tags:
+  - backup
+  - restore
+  - storage
+  - cloud
+repository: https://github.com/PlakarKorp/ansible-collection-plakar
+issues: https://github.com/PlakarKorp/ansible-collection-plakar/issues
+build_ignore:
+  - .github
+  - tests

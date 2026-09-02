@@ -1,0 +1,91 @@
+# Ansible Collection — plakarkorp.plakar
+
+Drive [Plakar](https://plakar.io) from Ansible playbooks: trigger backups and
+restores, and query job state through the Plakar management API. Built to run
+inside Red Hat Ansible Automation Platform (or plain ansible-core >= 2.15).
+
+All modules talk HTTPS to the management API; nothing runs on the managed
+hosts, so plays target `localhost` (or use `delegate_to`).
+
+## Setup
+
+The collection authenticates with an API key belonging to a service account.
+Once, as an administrator of your organization:
+
+1. Create a service account and grant it the `operator` role ("runs what is
+   already defined, and defines nothing").
+2. Mint an API key for it (`pcp_ak_...`) — the key is shown once, and is bound
+   to the organization it was minted in.
+
+Then point the collection at your deployment, via module arguments or the
+`PLAKAR_API_URL` / `PLAKAR_API_KEY` environment variables.
+
+> A service account without a grant does not get errors — it gets empty
+> lists. If a module reports "no connector named ...", check the grant first.
+
+## Modules
+
+| Module | Purpose |
+| --- | --- |
+| `plakarkorp.plakar.backup` | Trigger a backup of a source into a store |
+| `plakarkorp.plakar.restore` | Restore a snapshot from a store onto a destination |
+| `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
+
+Connectors are addressed **by name**; the modules resolve them within the
+organization at run time.
+
+## Example
+
+```yaml
+- hosts: localhost
+  gather_facts: false
+  environment:
+    PLAKAR_API_URL: https://plakar.example.com
+    PLAKAR_API_KEY: "{{ vault_plakar_api_key }}"
+  tasks:
+    - name: Backup the production database
+      plakarkorp.plakar.backup:
+        source: Production DB
+        store: S3 Store
+        labels: [nightly]
+
+    - name: Restore the latest snapshot onto the recovery target
+      plakarkorp.plakar.restore:
+        store: S3 Store
+        destination: Recovery target
+
+    - name: Any failed backups today?
+      plakarkorp.plakar.job_info:
+        task_type: backup
+        status: failed
+      register: failed
+```
+
+Backups and restores are asynchronous server-side: the modules poll until the
+job stops (`wait: true`, the default, `wait_timeout: 600`), or return
+immediately with `wait: false` for later polling with `job_info`.
+
+## Multi-organization plays
+
+An API key is bound to one organization. To operate in another organization
+the account is a member of, set `organization_id` on the task — the badge is
+re-scoped server-side, the key stays the same.
+
+## Development
+
+Integration tests run against a live dev stack:
+
+```sh
+PLAKAR_API_URL=http://localhost:8080 PLAKAR_API_KEY=pcp_ak_... \
+  ansible-playbook tests/integration/e2e.yml
+```
+
+Sanity:
+
+```sh
+ansible-test sanity --docker default
+```
+
+## License
+
+GPL-3.0-or-later (the Ansible ecosystem requirement for modules).
