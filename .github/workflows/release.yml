@@ -24,8 +24,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Pinned to the newest lane the CI matrix tests: sanity's license-ignore
+      # files are per-version (tests/sanity/ignore-X.Y.txt), so an unpinned
+      # ansible-core would gate the release on a version nothing ever ran.
       - name: Install ansible-core
-        run: pip install ansible-core
+        run: pip install "https://github.com/ansible/ansible/archive/stable-2.18.tar.gz"
 
       - name: Tag matches galaxy.yml
         working-directory: ansible_collections/plakarkorp/plakar

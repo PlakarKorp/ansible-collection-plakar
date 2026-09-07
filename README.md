@@ -57,6 +57,10 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.inventory_resource` | Declare resources in a self-managed inventory |
 | `plakarkorp.plakar.inventory_sync` | Re-read what an inventory's provider holds |
 | `plakarkorp.plakar.inventory_info` | Read inventories, coverage and resources |
+| `plakarkorp.plakar.organization` | Declare organizations under your own |
+| `plakarkorp.plakar.member` | Manage an organization's members (people and service accounts) |
+| `plakarkorp.plakar.grant` | Grant and revoke roles to members |
+| `plakarkorp.plakar.organization_info` | Read an organization, its members and grants |
 
 Everything is addressed **by name**; the modules resolve names within the
 organization at run time, and the declarative modules manage only the options
@@ -184,11 +188,65 @@ URN. Stick to the classes the control plane knows (`compute`, `database`,
 `service`, ...): the API stores unknown ones as-is but the UI and coverage
 grouping key off the known set.
 
+## Organizations, members and grants
+
+Under an owner's key you can carve out sub-organizations and set up who is in
+them and what they may do. A membership carries no permission — being in an
+organization and being allowed to do something are separate facts, so they are
+separate modules: `member` puts a person or a service account in, `grant`
+gives that member a role.
+
+```yaml
+- name: Stand up a tenant with its people and permissions
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - plakarkorp.plakar.organization:
+        name: Lyon
+
+    - plakarkorp.plakar.member:
+        organization: Lyon
+        email: alice@example.com
+        name: Alice
+      register: alice
+
+    # A brand-new account comes back with a one-time password; an address
+    # that already had one just gains the membership. Relay it once.
+    - ansible.builtin.debug:
+        msg: "Alice's initial password: {{ alice.generated_password }}"
+      when: alice.account_created | default(false)
+
+    - plakarkorp.plakar.grant:
+        organization: Lyon
+        subject: alice@example.com
+        role: auditor
+
+    # A service account for automation — no address, its API key is minted
+    # in the Plakar UI (an application user cannot mint its own).
+    - plakarkorp.plakar.member:
+        organization: Lyon
+        name: nightly-automation
+        service: true
+
+    - plakarkorp.plakar.grant:
+        organization: Lyon
+        subject: nightly-automation      # a service account by name
+        role: operator
+```
+
+Role names come from the server's catalogue — the standard tier is `owner`,
+`administrator`, `operator` and `auditor`; an unknown name fails with the
+list. `organization_info` reads a tenant back with `include_members` and
+`include_grants`. Removing a member removes the membership, not the person's
+account; an organization deletes only once it holds no other members.
+
 ## Multi-organization plays
 
 An API key is bound to one organization. To operate in another organization
 the account is a member of, set `organization_id` on the task — the badge is
-re-scoped server-side, the key stays the same.
+re-scoped server-side, the key stays the same. The organization modules also
+take an `organization:` name to act on a tenant in the key's own subtree
+without re-scoping.
 
 ## Development
 
