@@ -53,6 +53,10 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
 | `plakarkorp.plakar.store` | Declare stores (initialized on creation) |
 | `plakarkorp.plakar.connector` | Declare source and destination connectors |
+| `plakarkorp.plakar.inventory` | Declare inventories (cloud providers or self-managed) |
+| `plakarkorp.plakar.inventory_resource` | Declare resources in a self-managed inventory |
+| `plakarkorp.plakar.inventory_sync` | Re-read what an inventory's provider holds |
+| `plakarkorp.plakar.inventory_info` | Read inventories, coverage and resources |
 
 Everything is addressed **by name**; the modules resolve names within the
 organization at run time, and the declarative modules manage only the options

@@ -24,6 +24,26 @@ plugins:
       name: connector
       namespace: ''
       version_added: 0.1.0
+    inventory:
+      description: Manage Plakar inventories
+      name: inventory
+      namespace: ''
+      version_added: 0.1.0
+    inventory_info:
+      description: Read Plakar inventories and their resources
+      name: inventory_info
+      namespace: ''
+      version_added: 0.1.0
+    inventory_resource:
+      description: Manage resources in a self-managed Plakar inventory
+      name: inventory_resource
+      namespace: ''
+      version_added: 0.1.0
+    inventory_sync:
+      description: Synchronize a Plakar inventory against its provider
+      name: inventory_sync
+      namespace: ''
+      version_added: 0.1.0
     job_info:
       description: Query Plakar job state
       name: job_info
