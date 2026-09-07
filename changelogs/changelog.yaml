@@ -5,9 +5,9 @@ releases:
       release_summary: 'First release of the collection: trigger backups, restores,
         store syncs,
 
-        integrity checks and retention prunes, query job state, and declare stores
+        integrity checks and retention prunes, query job state, and declare stores,
 
-        and connectors against the Plakar management API.
+        connectors and inventories against the Plakar management API.
 
         '
     fragments:
@@ -21,6 +21,18 @@ releases:
       namespace: ''
     - description: Manage Plakar source and destination connectors.
       name: connector
+      namespace: ''
+    - description: Manage Plakar inventories.
+      name: inventory
+      namespace: ''
+    - description: Read Plakar inventories and their resources.
+      name: inventory_info
+      namespace: ''
+    - description: Manage resources in a self-managed Plakar inventory.
+      name: inventory_resource
+      namespace: ''
+    - description: Synchronize a Plakar inventory against its provider.
+      name: inventory_sync
       namespace: ''
     - description: Query Plakar job state.
       name: job_info

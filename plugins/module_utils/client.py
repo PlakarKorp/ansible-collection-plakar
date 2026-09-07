@@ -218,6 +218,62 @@ class PlakarClient(object):
             return by_name[0]
         raise PlakarError('no resource with URN or name %r' % value)
 
+    def list_inventories(self):
+        """All inventories of the organization (the route pages at 50)."""
+        items, offset = [], 0
+        while True:
+            res = self.request('GET',
+                               '/api/v1/account/organizations/%s/inventories' % self.org_id(),
+                               query={'limit': 50, 'offset': offset})
+            page = res.get('items') or []
+            items.extend(page)
+            offset += len(page)
+            if not page or offset >= (res.get('total') or 0):
+                break
+        return items
+
+    def find_inventory(self, name):
+        """One inventory by name, None when absent, error on a duplicate name."""
+        matches = [i for i in self.list_inventories() if i.get('name') == name]
+        if len(matches) > 1:
+            raise PlakarError('%d inventories named %r — names must be unique to '
+                              'address them from a playbook' % (len(matches), name))
+        return matches[0] if matches else None
+
+    def inventory_by_name(self, name):
+        """Like find_inventory, but absence is an error naming the visible ones."""
+        found = self.find_inventory(name)
+        if found is None:
+            items = self.list_inventories()
+            known = ', '.join(sorted(repr(i.get('name')) for i in items)) or '(none visible)'
+            raise PlakarError(
+                'no inventory named %r — visible: %s. An empty list can also mean '
+                'the API key\'s user holds no grant in the organization.'
+                % (name, known))
+        return found
+
+    def inventory_resources(self, inventory_id, search=None):
+        """Resources of one inventory (the route pages at 50)."""
+        items, offset = [], 0
+        while True:
+            query = {'limit': 50, 'offset': offset}
+            if search:
+                query['search'] = quote(search)
+            res = self.request('GET', '/api/v1/inventories/%s/resources' % inventory_id,
+                               query=query)
+            page = res.get('items') or []
+            items.extend(page)
+            offset += len(page)
+            if not page or offset >= (res.get('total') or 0):
+                break
+        return items
+
+    def find_inventory_resource(self, inventory_id, urn):
+        """One resource by URN within an inventory, None when absent."""
+        matches = [r for r in self.inventory_resources(inventory_id, search=urn)
+                   if r.get('urn') == urn]
+        return matches[0] if matches else None
+
     def snapshots(self, store_id):
         res = self.request('GET', '/api/v1/snapshots/store/%s' % store_id)
         return res.get('items') or []

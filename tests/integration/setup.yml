@@ -42,7 +42,10 @@
         url: "{{ api_url }}/api/v1/auth/login/password"
         method: POST
         body_format: json
-        body: { email: "{{ admin_email }}", password: "{{ admin_password }}" }
+        # Since plakman v0.14.0 the login identifier is `account`
+        # (<org-prefix>/<email>); the bare email lands at the deployment
+        # root, which is exactly where bootstrap-root put the admin.
+        body: { account: "{{ admin_email }}", password: "{{ admin_password }}" }
       register: login
       retries: 30
       delay: 2
@@ -67,6 +70,17 @@
       ansible.builtin.set_fact:
         auth: { Authorization: "Bearer {{ badge.json.token }}" }
         org: "{{ me.json.organization_id }}"
+
+    # The default retention floor (3 restore points, plakman >= v0.14.0) would
+    # veto the prune assertions in e2e.yml, which reason about small stores;
+    # an explicit 0 is the one value that states "no floor".
+    - name: State no retention floor for the CI organization
+      ansible.builtin.uri:
+        url: "{{ api_url }}/api/v1/account/organizations/{{ org }}/settings"
+        method: POST
+        body_format: json
+        body: { retention: { min_versions: 0 } }
+        headers: "{{ auth }}"
 
     # The catalog fills asynchronously once the daemon resolves its identity
     # (bootstrap-root created it), so the first minute can answer empty.

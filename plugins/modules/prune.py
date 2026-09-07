@@ -119,14 +119,23 @@ held:
   returned: always
   type: list
   elements: str
-at_id:
-  description: Identifier of the deletion run, when something was deleted.
+floored:
+  description: Snapshot ids the rule would delete but the organization's
+    retention floor keeps anyway.
+  returned: always
+  type: list
+  elements: str
+at_ids:
+  description: Identifiers of the deletion runs, when something was deleted.
+    A long delete list may be split over several runs.
   returned: when a deletion ran
-  type: str
-job:
-  description: The deletion job, when something was deleted and O(wait=true).
+  type: list
+  elements: str
+jobs:
+  description: The deletion jobs, when something was deleted and O(wait=true).
   returned: when a deletion ran and was waited on
-  type: dict
+  type: list
+  elements: dict
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -193,29 +202,36 @@ def main():
             would = res.get('would_delete') or []
             module.exit_json(changed=bool(would), deleted=would,
                              kept=res.get('would_keep') or [],
-                             held=res.get('held') or [])
+                             held=res.get('held') or [],
+                             floored=res.get('floored') or [])
 
         res = client.request(
             'POST', '/api/v1/snapshots/store/%s/prune/run' % store['id'],
             body=body)
         deleted = res.get('deleted') or []
         held = res.get('held') or []
-        at_id = res.get('at_id')
+        # A long delete list may be split over several runs (at_ids, plakman
+        # >= v0.14.0); older servers answered a single at_id.
+        at_ids = res.get('at_ids') or ([res['at_id']] if res.get('at_id') else [])
 
-        result = dict(changed=bool(deleted), deleted=deleted, held=held)
-        if at_id:
-            result['at_id'] = at_id
+        result = dict(changed=bool(deleted), deleted=deleted, held=held,
+                      floored=res.get('floored') or [])
+        if at_ids:
+            result['at_ids'] = at_ids
             if params['wait']:
-                job = client.wait_at(at_id, timeout=params['wait_timeout'])
-                if job['status'] != 'succeeded':
-                    log = ''
-                    try:
-                        log = client.job_log(job['id'])
-                    except PlakarError:
-                        pass
-                    module.fail_json(msg='prune deletion ended %s' % job['status'],
-                                     log=log, **result)
-                result['job'] = job
+                jobs = []
+                for at_id in at_ids:
+                    job = client.wait_at(at_id, timeout=params['wait_timeout'])
+                    jobs.append(job)
+                    if job['status'] != 'succeeded':
+                        log = ''
+                        try:
+                            log = client.job_log(job['id'])
+                        except PlakarError:
+                            pass
+                        module.fail_json(msg='prune deletion ended %s' % job['status'],
+                                         log=log, jobs=jobs, **result)
+                result['jobs'] = jobs
         module.exit_json(**result)
     except PlakarError as e:
         module.fail_json(msg=e.msg, status=e.status)
