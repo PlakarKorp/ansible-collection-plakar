@@ -274,6 +274,79 @@ class PlakarClient(object):
                    if r.get('urn') == urn]
         return matches[0] if matches else None
 
+    # --- organizations, members, grants --------------------------------------
+
+    def paged(self, path, query=None):
+        """Fetch every page of a paginated listing (the routes cap at 50)."""
+        items, offset = [], 0
+        while True:
+            q = dict(query or {})
+            q.update(limit=50, offset=offset)
+            res = self.request('GET', path, query=q)
+            page = res.get('items') or []
+            items.extend(page)
+            offset += len(page)
+            if not page or offset >= (res.get('total') or 0):
+                break
+        return items
+
+    def child_organizations(self, org_id):
+        res = self.request('GET', '/api/v1/account/organizations/%s/children' % org_id)
+        return res if isinstance(res, list) else (res.get('items') or [])
+
+    def resolve_organization(self, name):
+        """An organization by name in the badge organization's subtree.
+
+        The badge organization itself counts, then its descendants,
+        breadth-first. Duplicates across the subtree are an error: a play
+        must not manage whichever namesake a walk happens to meet first.
+        """
+        root_id = self.org_id()
+        root = self.request('GET', '/api/v1/account/organizations/%s' % root_id)
+        matches = [root] if root.get('name') == name else []
+        frontier = [root_id]
+        while frontier:
+            children = []
+            for parent in frontier:
+                children.extend(self.child_organizations(parent))
+            matches.extend(c for c in children if c.get('name') == name)
+            frontier = [c['id'] for c in children]
+        if len(matches) > 1:
+            raise PlakarError('%d organizations named %r in the subtree — names '
+                              'must be unique to address them from a playbook'
+                              % (len(matches), name))
+        return matches[0] if matches else None
+
+    def organization_by_name(self, name):
+        found = self.resolve_organization(name)
+        if found is None:
+            raise PlakarError('no organization named %r in the badge '
+                              'organization\'s subtree' % name)
+        return found
+
+    def list_members(self, org_id):
+        return self.paged('/api/v1/account/organizations/%s/members' % org_id)
+
+    def find_member(self, org_id, email=None, name=None):
+        """One member by email (a person) or by name, None when absent."""
+        members = self.list_members(org_id)
+        if email:
+            matches = [m for m in members if m.get('email') == email]
+        else:
+            matches = [m for m in members if m.get('name') == name]
+            if len(matches) > 1:
+                raise PlakarError('%d members named %r — use email to '
+                                  'disambiguate' % (len(matches), name))
+        return matches[0] if matches else None
+
+    def list_grants(self, org_id):
+        return self.paged('/api/v1/account/organizations/%s/access' % org_id)
+
+    def role_names(self):
+        res = self.request('GET', '/api/v1/roles')
+        items = res if isinstance(res, list) else (res.get('items') or [])
+        return sorted(r.get('name') for r in items if r.get('name'))
+
     def snapshots(self, store_id):
         res = self.request('GET', '/api/v1/snapshots/store/%s' % store_id)
         return res.get('items') or []

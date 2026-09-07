@@ -24,6 +24,11 @@ plugins:
       name: connector
       namespace: ''
       version_added: 0.1.0
+    grant:
+      description: Manage role grants in a Plakar organization
+      name: grant
+      namespace: ''
+      version_added: 0.1.0
     inventory:
       description: Manage Plakar inventories
       name: inventory
@@ -47,6 +52,21 @@ plugins:
     job_info:
       description: Query Plakar job state
       name: job_info
+      namespace: ''
+      version_added: 0.1.0
+    member:
+      description: Manage the members of a Plakar organization
+      name: member
+      namespace: ''
+      version_added: 0.1.0
+    organization:
+      description: Manage Plakar organizations
+      name: organization
+      namespace: ''
+      version_added: 0.1.0
+    organization_info:
+      description: Read a Plakar organization, its members and its grants
+      name: organization_info
       namespace: ''
       version_added: 0.1.0
     prune:
