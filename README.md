@@ -128,6 +128,62 @@ Declaring the estate looks like this:
       root: /backups
 ```
 
+## Inventories
+
+Connectors attach to **inventory resources** — the machines and services the
+control plane knows about and tracks coverage for. A provider-backed
+inventory watches a cloud account and fills itself on sync:
+
+```yaml
+- plakarkorp.plakar.inventory:
+    name: Production Scaleway
+    type: scaleway
+    configuration:
+      scw_project_id: "{{ scw_project_id }}"
+      scw_access_key: "{{ vault_scw_access_key }}"
+      scw_secret_key: "{{ vault_scw_secret_key }}"
+
+- plakarkorp.plakar.inventory_sync:
+    name: Production Scaleway
+```
+
+A **self-managed** inventory holds whatever the playbook declares — which is
+how a fleet Ansible already knows becomes a coverage inventory the control
+plane tracks. Resources are keyed by URN, so the mirroring is idempotent and
+can run on every inventory change:
+
+```yaml
+- name: Mirror the Ansible inventory into the control plane
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - plakarkorp.plakar.inventory:
+        name: Ansible fleet
+        type: self-managed
+
+    - plakarkorp.plakar.inventory_resource:
+        inventory: Ansible fleet
+        urn: "urn:ansible:{{ item }}"
+        name: "{{ item }}"
+        class: "{{ hostvars[item].plakar_class | default('compute') }}"
+        endpoints: ["{{ hostvars[item].ansible_host | default(item) }}"]
+        tags: "{{ hostvars[item].plakar_tags | default([]) + ['ansible-managed'] }}"
+      loop: "{{ groups['all'] }}"
+
+    - plakarkorp.plakar.inventory_info:
+        name: Ansible fleet
+        include_resources: true
+      register: fleet
+```
+
+`inventory_info` reports each inventory's coverage (protected, unprotected,
+excluded) — freshly mirrored hosts show up unprotected until a connector and
+a schedule take care of them. Retiring a resource is `state: absent` on its
+URN. Stick to the classes the control plane knows (`compute`, `database`,
+`file-storage`, `object-storage`, `block-storage`, `network`, `hypervisor`,
+`service`, ...): the API stores unknown ones as-is but the UI and coverage
+grouping key off the known set.
+
 ## Multi-organization plays
 
 An API key is bound to one organization. To operate in another organization
