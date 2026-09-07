@@ -7,7 +7,9 @@ releases:
 
         integrity checks and retention prunes, query job state, and declare stores,
 
-        connectors and inventories against the Plakar management API.
+        connectors, inventories, organizations, members and grants against the
+
+        Plakar management API.
 
         '
     fragments:
@@ -21,6 +23,9 @@ releases:
       namespace: ''
     - description: Manage Plakar source and destination connectors.
       name: connector
+      namespace: ''
+    - description: Manage role grants in a Plakar organization.
+      name: grant
       namespace: ''
     - description: Manage Plakar inventories.
       name: inventory
@@ -36,6 +41,15 @@ releases:
       namespace: ''
     - description: Query Plakar job state.
       name: job_info
+      namespace: ''
+    - description: Manage the members of a Plakar organization.
+      name: member
+      namespace: ''
+    - description: Manage Plakar organizations.
+      name: organization
+      namespace: ''
+    - description: Read a Plakar organization, its members and its grants.
+      name: organization_info
       namespace: ''
     - description: Prune snapshots from a Plakar store by retention rule.
       name: prune

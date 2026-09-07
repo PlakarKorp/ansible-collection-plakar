@@ -10,3 +10,7 @@ plugins/modules/inventory.py validate-modules:missing-gplv3-license
 plugins/modules/inventory_sync.py validate-modules:missing-gplv3-license
 plugins/modules/inventory_resource.py validate-modules:missing-gplv3-license
 plugins/modules/inventory_info.py validate-modules:missing-gplv3-license
+plugins/modules/organization.py validate-modules:missing-gplv3-license
+plugins/modules/member.py validate-modules:missing-gplv3-license
+plugins/modules/grant.py validate-modules:missing-gplv3-license
+plugins/modules/organization_info.py validate-modules:missing-gplv3-license
