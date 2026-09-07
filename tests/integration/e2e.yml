@@ -476,6 +476,142 @@
       register: inv_gone_again
       failed_when: inv_gone_again.changed or not inv_gone.changed or not res_gone.changed
 
+    # --- organizations, members, grants (round three) ----------------------
+    - name: Clean up a tenant leftover
+      plakarkorp.plakar.organization:
+        name: E2E tenant
+        state: absent
+
+    - name: A tenant of our own
+      plakarkorp.plakar.organization:
+        name: E2E tenant
+      register: tenant
+
+    - name: The same tenant again is a no-op
+      plakarkorp.plakar.organization:
+        name: E2E tenant
+      register: tenant_again
+      failed_when: tenant_again.changed or not tenant.changed
+
+    - name: Alice joins it
+      plakarkorp.plakar.member:
+        organization: E2E tenant
+        email: alice@example.com
+        name: Alice
+      register: alice
+
+    # On a pristine stack the address is brand new and a one-time password
+    # comes back; on a re-run the account survives the tenant teardown (a
+    # membership removal never deletes the person) and no password is minted.
+    - name: The membership was created, with a password iff the account is new
+      ansible.builtin.assert:
+        that:
+          - alice.changed
+          - "'alice@example.com' in alice.member.account"
+          - not alice.account_created or alice.generated_password is not none
+
+    - name: Alice again is a no-op
+      plakarkorp.plakar.member:
+        organization: E2E tenant
+        email: alice@example.com
+      register: alice_again
+      failed_when: alice_again.changed
+
+    - name: A service account for the tenant's automation
+      plakarkorp.plakar.member:
+        organization: E2E tenant
+        name: e2e-robot
+        service: true
+      register: robot
+      failed_when: not robot.changed or 'service.internal' not in robot.member.account
+
+    - name: The robot again is a no-op
+      plakarkorp.plakar.member:
+        organization: E2E tenant
+        name: e2e-robot
+        service: true
+      register: robot_again
+      failed_when: robot_again.changed
+
+    - name: An unknown role fails with the catalogue
+      plakarkorp.plakar.grant:
+        organization: E2E tenant
+        subject: alice@example.com
+        role: emperor
+      register: bad_role
+      failed_when: bad_role is not failed or 'owner' not in (bad_role.msg | default(''))
+
+    - name: Alice audits, the robot operates
+      plakarkorp.plakar.grant:
+        organization: E2E tenant
+        subject: "{{ item.subject }}"
+        role: "{{ item.role }}"
+      loop:
+        - {subject: alice@example.com, role: auditor}
+        - {subject: e2e-robot, role: operator}
+
+    - name: The same grants again are no-ops
+      plakarkorp.plakar.grant:
+        organization: E2E tenant
+        subject: "{{ item.subject }}"
+        role: "{{ item.role }}"
+      loop:
+        - {subject: alice@example.com, role: auditor}
+        - {subject: e2e-robot, role: operator}
+      register: grants_again
+      failed_when: grants_again.changed
+
+    - name: Read the tenant back
+      plakarkorp.plakar.organization_info:
+        name: E2E tenant
+        include_members: true
+        include_grants: true
+      register: tenant_info
+
+    - name: Members and grants are what we declared
+      ansible.builtin.assert:
+        that:
+          - tenant_info.members | length == 2
+          - tenant_info.grants | length == 2
+          - (tenant_info.grants | selectattr('role', 'equalto', 'operator') | first).subject.name == 'e2e-robot'
+
+    - name: Revoke the audit
+      plakarkorp.plakar.grant:
+        organization: E2E tenant
+        subject: alice@example.com
+        role: auditor
+        state: absent
+      register: revoked
+      failed_when: not revoked.changed
+
+    - name: Alice leaves
+      plakarkorp.plakar.member:
+        organization: E2E tenant
+        email: alice@example.com
+        state: absent
+
+    - name: The robot leaves too
+      plakarkorp.plakar.member:
+        organization: E2E tenant
+        name: e2e-robot
+        service: true
+        state: absent
+
+    # The organization is deletable only once no members remain besides the
+    # caller — the API answers 409 otherwise.
+    - name: Tear the tenant down
+      plakarkorp.plakar.organization:
+        name: E2E tenant
+        state: absent
+      register: tenant_gone
+
+    - name: Gone is gone
+      plakarkorp.plakar.organization:
+        name: E2E tenant
+        state: absent
+      register: tenant_gone_again
+      failed_when: tenant_gone_again.changed or not tenant_gone.changed
+
     - name: Summary
       ansible.builtin.debug:
         msg:
