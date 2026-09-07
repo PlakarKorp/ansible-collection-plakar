@@ -178,7 +178,7 @@
       plakarkorp.plakar.store:
         name: Prune lab
         integration: s3
-        resource: Silent Frost
+        resource: "{{ store_resource }}"
         environment: production
         fields:
           passphrase: correcthorsebatterystaple
@@ -230,7 +230,7 @@
         that:
           - pruned.changed
           - pruned.deleted | length == 1
-          - pruned.job.status == 'succeeded'
+          - pruned.jobs | map(attribute='status') | unique | list == ['succeeded']
 
     - name: Pruning again under the same rule is a no-op
       plakarkorp.plakar.prune:
@@ -367,9 +367,118 @@
       register: repo_gone_again
       failed_when: repo_gone_again.changed or not repo_gone.changed
 
+    # --- inventories (round two) -------------------------------------------
+    # Clean slate first, so a re-run over a previously aborted play still
+    # asserts real creations below.
+    - name: Clean up an inventory leftover
+      plakarkorp.plakar.inventory:
+        name: Ansible inventory
+        state: absent
+
+    - name: Create a self-managed inventory
+      plakarkorp.plakar.inventory:
+        name: Ansible inventory
+        type: self-managed
+      register: inv_created
+
+    - name: The same inventory again is a no-op
+      plakarkorp.plakar.inventory:
+        name: Ansible inventory
+        type: self-managed
+      register: inv_again
+      failed_when: inv_again.changed or not inv_created.changed
+
+    - name: Declare a resource in it
+      plakarkorp.plakar.inventory_resource:
+        inventory: Ansible inventory
+        urn: urn:res-ansible-e2e
+        name: E2E box
+        class: object-storage
+        subclass: s3
+        service: s3
+        endpoints: [e2e-box.internal]
+        tags: [e2e]
+      register: res_created
+
+    - name: The same resource again is a no-op
+      plakarkorp.plakar.inventory_resource:
+        inventory: Ansible inventory
+        urn: urn:res-ansible-e2e
+        name: E2E box
+        class: object-storage
+        endpoints: [e2e-box.internal]
+        tags: [e2e]
+      register: res_again
+      failed_when: res_again.changed or not res_created.changed
+
+    - name: Retagging it is an update
+      plakarkorp.plakar.inventory_resource:
+        inventory: Ansible inventory
+        urn: urn:res-ansible-e2e
+        tags: [e2e, retagged]
+      register: res_update
+
+    - name: The update reports what differed
+      ansible.builtin.assert:
+        that:
+          - res_update.changed
+          - res_update.diff_keys == ['tags']
+
+    - name: Read the inventory back, resources included
+      plakarkorp.plakar.inventory_info:
+        name: Ansible inventory
+        include_resources: true
+      register: inv_info
+
+    - name: Info carries the resource
+      ansible.builtin.assert:
+        that:
+          - inv_info.inventory.type == 'self-managed'
+          - inv_info.resources | selectattr('urn', 'equalto', 'urn:res-ansible-e2e') | list | length == 1
+
+    - name: The listing sees it too
+      plakarkorp.plakar.inventory_info:
+      register: inv_listing
+      failed_when: >-
+        'Ansible inventory' not in (inv_listing.inventories | map(attribute='name') | list)
+
+    # On a self-managed inventory the sync is a server-side no-op, but it
+    # exercises the whole path: name resolution, the mutating GET, the ok box.
+    - name: Sync the inventory
+      plakarkorp.plakar.inventory_sync:
+        name: Ansible inventory
+      register: inv_synced
+      failed_when: not inv_synced.changed
+
+    - name: Syncing an unknown inventory fails with the visible names
+      plakarkorp.plakar.inventory_sync:
+        name: does-not-exist
+      register: sync_missing
+      failed_when: sync_missing is not failed
+
+    - name: Drop the resource
+      plakarkorp.plakar.inventory_resource:
+        inventory: Ansible inventory
+        urn: urn:res-ansible-e2e
+        state: absent
+      register: res_gone
+
+    - name: Drop the inventory
+      plakarkorp.plakar.inventory:
+        name: Ansible inventory
+        state: absent
+      register: inv_gone
+
+    - name: Dropping it again is a no-op
+      plakarkorp.plakar.inventory:
+        name: Ansible inventory
+        state: absent
+      register: inv_gone_again
+      failed_when: inv_gone_again.changed or not inv_gone.changed or not res_gone.changed
+
     - name: Summary
       ansible.builtin.debug:
         msg:
           - "backup {{ backup.job.id }}: {{ backup.job.status }}"
           - "restore {{ restore.job.id }}: {{ restore.job.status }} (snapshot {{ restore.snapshot_id }})"
-          - "declarative round-trip: store and connector all green"
+          - "declarative round-trip: store, connector and inventory all green"
