@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: connector
 short_description: Manage Plakar source and destination connectors
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Creates, updates and deletes source and destination connectors in the
     Plakar management API. For stores, use M(plakarkorp.plakar.store)

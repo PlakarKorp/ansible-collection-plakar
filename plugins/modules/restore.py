@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: restore
 short_description: Trigger a Plakar restore
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Triggers an on-demand restore of a snapshot from a store onto a
     destination connector, through the Plakar management API.

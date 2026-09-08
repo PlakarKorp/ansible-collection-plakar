@@ -1,6 +1,6 @@
 ancestor: null
 releases:
-  0.1.0:
+  0.9.1:
     changes:
       release_summary: 'First release of the collection: trigger backups, restores,
         store syncs,
@@ -13,7 +13,7 @@ releases:
 
         '
     fragments:
-    - 0.1.0-initial.yml
+    - 0.9.1-initial.yml
     modules:
     - description: Trigger a Plakar backup.
       name: backup

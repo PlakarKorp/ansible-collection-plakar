@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: grant
 short_description: Manage role grants in a Plakar organization
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Grants a role to a member of an organization, and revokes it.
   - A grant is one (subject, role) pair; a member can hold several. The

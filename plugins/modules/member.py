@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: member
 short_description: Manage the members of a Plakar organization
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Adds people and service accounts to an organization, and removes them.
   - A membership carries no permission — what a member may do is a grant,

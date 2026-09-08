@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: prune
 short_description: Prune snapshots from a Plakar store by retention rule
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Applies a retention rule to a store's snapshots and deletes what falls
     outside it, through the Plakar management API. Snapshots under legal hold

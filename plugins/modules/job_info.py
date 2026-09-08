@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: job_info
 short_description: Query Plakar job state
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Reads job state from the Plakar management API, either one job by id or a
     filtered list.

@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: sync
 short_description: Sync snapshots between Plakar stores
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Triggers an on-demand synchronization of snapshots from one store into
     another — offsite replication, hot-to-cold tiering — through the Plakar

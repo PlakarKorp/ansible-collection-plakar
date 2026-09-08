@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: backup
 short_description: Trigger a Plakar backup
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Triggers an on-demand backup of a source connector into a store, through
     the Plakar management API.

@@ -1,6 +1,6 @@
 namespace: plakarkorp
 name: plakar
-version: 0.1.0
+version: 0.9.1
 readme: README.md
 authors:
   - PlakarKorp <support@plakar.io>

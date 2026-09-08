@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: inventory_info
 short_description: Read Plakar inventories and their resources
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Lists the organization's inventories, or reads one inventory by name with
     its coverage summary and, optionally, its resources.

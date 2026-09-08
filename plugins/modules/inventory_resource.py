@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: inventory_resource
 short_description: Manage resources in a self-managed Plakar inventory
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Declares, updates and deletes resources in a self-managed inventory (see
     M(plakarkorp.plakar.inventory)). Provider-backed inventories are read-only;

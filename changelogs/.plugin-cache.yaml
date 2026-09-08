@@ -13,84 +13,84 @@ plugins:
       description: Trigger a Plakar backup
       name: backup
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     check:
       description: Verify the integrity of Plakar snapshots
       name: check
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     connector:
       description: Manage Plakar source and destination connectors
       name: connector
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     grant:
       description: Manage role grants in a Plakar organization
       name: grant
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     inventory:
       description: Manage Plakar inventories
       name: inventory
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     inventory_info:
       description: Read Plakar inventories and their resources
       name: inventory_info
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     inventory_resource:
       description: Manage resources in a self-managed Plakar inventory
       name: inventory_resource
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     inventory_sync:
       description: Synchronize a Plakar inventory against its provider
       name: inventory_sync
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     job_info:
       description: Query Plakar job state
       name: job_info
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     member:
       description: Manage the members of a Plakar organization
       name: member
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     organization:
       description: Manage Plakar organizations
       name: organization
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     organization_info:
       description: Read a Plakar organization, its members and its grants
       name: organization_info
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     prune:
       description: Prune snapshots from a Plakar store by retention rule
       name: prune
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     restore:
       description: Trigger a Plakar restore
       name: restore
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     store:
       description: Manage Plakar stores
       name: store
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
     sync:
       description: Sync snapshots between Plakar stores
       name: sync
       namespace: ''
-      version_added: 0.1.0
+      version_added: 0.9.1
   netconf: {}
   shell: {}
   strategy: {}
   vars: {}
-version: 0.1.0
+version: 0.9.1

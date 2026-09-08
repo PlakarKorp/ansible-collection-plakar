@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: check
 short_description: Verify the integrity of Plakar snapshots
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Triggers an on-demand integrity check of the snapshots held in a store,
     through the Plakar management API.

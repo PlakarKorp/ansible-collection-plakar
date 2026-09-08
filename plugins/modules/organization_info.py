@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: organization_info
 short_description: Read a Plakar organization, its members and its grants
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Reads one organization by name (the API key's own by default), with its
     children and, on request, its members and grants.

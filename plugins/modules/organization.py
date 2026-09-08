@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: organization
 short_description: Manage Plakar organizations
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Creates and deletes organizations under the API key's organization.
   - Organizations are matched by name across the badge organization's

@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: inventory_sync
 short_description: Synchronize a Plakar inventory against its provider
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Triggers a synchronization of an inventory, re-reading what its provider
     holds and updating the resource set accordingly. The call is synchronous

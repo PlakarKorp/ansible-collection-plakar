@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: inventory
 short_description: Manage Plakar inventories
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Creates, updates and deletes inventories in the Plakar management API.
   - An inventory watches what a provider holds (AWS, Scaleway, GCP, OVH,

@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: store
 short_description: Manage Plakar stores
-version_added: 0.1.0
+version_added: 0.9.1
 description:
   - Creates, updates and deletes stores — where Plakar keeps backup data — in
     the Plakar management API, initializing the underlying storage on

@@ -4,7 +4,7 @@ Plakarkorp.Plakar Release Notes
 
 .. contents:: Topics
 
-v0.1.0
+v0.9.1
 ======
 
 Release Summary
