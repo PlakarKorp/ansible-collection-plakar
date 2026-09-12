@@ -345,10 +345,22 @@ def main():
         module.fail_json(msg='%s tasks require a target store' % task_type)
 
     try:
-        origin = client.connector_by_name(origin_kind, params['origin'])
-        target = None
-        if target_kind is not None:
-            target = client.connector_by_name(target_kind, params['target'])
+        # A task being removed may outlive its connectors; absence of the
+        # origin then simply means there is nothing left to delete.
+        if params['state'] == 'absent':
+            origin = client.find_connector(origin_kind, params['origin'])
+            if origin is None:
+                module.exit_json(changed=False)
+            target = None
+            if target_kind is not None:
+                target = client.find_connector(target_kind, params['target'])
+                if target is None:
+                    module.exit_json(changed=False)
+        else:
+            origin = client.connector_by_name(origin_kind, params['origin'])
+            target = None
+            if target_kind is not None:
+                target = client.connector_by_name(target_kind, params['target'])
         target_id = target['id'] if target else None
 
         existing = match_task(client, task_type, origin['id'], target_id,
