@@ -61,6 +61,9 @@ options:
         V(provider_id) naming a secret provider.
       - On update, only the fields named here are compared and replaced;
         other existing fields are preserved.
+      - Must carry a non-empty C(passphrase) when the store is initialized
+        here, since it encrypts the store at rest. A field backed by a secret
+        provider counts as set, because the provider supplies the value.
     type: dict
   endpoints:
     description:
@@ -84,6 +87,8 @@ options:
     description:
       - Whether to initialize the underlying storage right after creating
         the store. Initialization only happens on creation, never on update.
+      - Set it to false when the storage is already initialized elsewhere,
+        which also lifts the passphrase requirement.
     type: bool
     default: true
   compression:

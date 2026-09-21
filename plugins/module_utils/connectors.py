@@ -53,6 +53,30 @@ def _fields_to_api(raw):
     return out
 
 
+def _check_store_passphrase(module, raw, name):
+    """A store is encrypted at rest: refuse to create one without a key.
+
+    The API takes a create with no passphrase and answers 200, which leaves a
+    store that exists and validates with nothing behind it — worse than a
+    failed run, because it only surfaces when someone needs what is in it.
+
+    A field sourced from a secret provider carries no inline value; the
+    provider supplies it, so that counts as set.
+    """
+    value = (raw or {}).get('passphrase')
+    if isinstance(value, dict):
+        if value.get('provider_id'):
+            return
+        value = value.get('value')
+    # A bare YAML boolean is never a passphrase; _value_str would turn it into
+    # a perfectly non-empty "false" and wave it through.
+    if value is None or isinstance(value, bool) or not _value_str(value).strip():
+        module.fail_json(
+            msg='fields.passphrase is required to create store %r: it encrypts '
+                'the store at rest. Pass initialize: false if the underlying '
+                'storage is already initialized elsewhere.' % name)
+
+
 def _fields_differ(desired, current):
     """Only the keys the playbook names are managed; extra current keys stay."""
     current = current or {}
@@ -98,6 +122,9 @@ def run_connector_module(module, client, kind, store=False):
         for required in ('integration', 'resource'):
             if not params.get(required):
                 module.fail_json(msg='%s is required to create connector %r' % (required, name))
+        if store and params.get('initialize'):
+            # Before check_mode returns below, so a dry run reports the miss too.
+            _check_store_passphrase(module, params.get('fields'), name)
         integration = client.installed_integration(params['integration'])
         resource = client.resource_ref(params['resource'])
 

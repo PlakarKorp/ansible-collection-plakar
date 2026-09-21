@@ -279,6 +279,67 @@
             name: Ansible repo
             state: absent
 
+    # A store is encrypted at rest, so creating one without a passphrase
+    # would leave a store the API accepts and nobody can trust. Check mode
+    # has to refuse it too, or a dry run would report success for a play
+    # that cannot work.
+    - name: A store with no passphrase is refused
+      plakarkorp.plakar.store:
+        name: Passphraseless
+        integration: s3
+        resource: "{{ store_resource }}"
+        fields:
+          access_key: minioadmin
+          root: /nope
+      register: no_pass
+      failed_when: no_pass is not failed
+
+    - name: An empty passphrase is refused as well
+      plakarkorp.plakar.store:
+        name: Passphraseless
+        integration: s3
+        resource: "{{ store_resource }}"
+        fields:
+          passphrase: "   "
+          root: /nope
+      register: blank_pass
+      failed_when: blank_pass is not failed
+
+    - name: Check mode refuses it too, rather than reporting a clean run
+      plakarkorp.plakar.store:
+        name: Passphraseless
+        integration: s3
+        resource: "{{ store_resource }}"
+        fields:
+          root: /nope
+      check_mode: true
+      register: check_pass
+      failed_when: check_pass is not failed
+
+    # initialize: false means the storage was set up elsewhere, passphrase
+    # and all, so the requirement does not apply.
+    - name: Without initialization the passphrase is not required
+      plakarkorp.plakar.store:
+        name: Adopted store
+        integration: s3
+        resource: "{{ store_resource }}"
+        initialize: false
+        fields:
+          access_key: minioadmin
+          root: /adopted
+      register: adopted
+
+    - name: The adopted store was created, uninitialized
+      assert:
+        that:
+          - adopted.changed
+          - not adopted.connector.initialized
+
+    - name: Drop the adopted store
+      plakarkorp.plakar.store:
+        name: Adopted store
+        state: absent
+
     # No protocol: it defaults to the integration name.
     - name: Create a managed store
       plakarkorp.plakar.store:
