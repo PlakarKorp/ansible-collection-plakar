@@ -2,7 +2,8 @@
 # install the (sideloaded) s3 and vault integrations, declare the inventory, resource and
 # the three connectors e2e.yml expects, initialize the kloset store, and mint
 # an API key for a service account holding the owner role (the e2e both runs jobs
-# and manages connector lifecycle).
+# and manages connector lifecycle) and the platform-admin role (it installs an
+# integration).
 #
 # Run after `plakman bootstrap-root` has seeded the admin:
 #
@@ -228,7 +229,9 @@
         headers: "{{ auth }}"
       register: svc
 
-    - name: Grant it the owner role
+    # owner runs the jobs and manages the connectors; installing an
+    # integration is a write on the deployment, which takes platform-admin.
+    - name: Grant it the owner and platform-admin roles
       ansible.builtin.uri:
         url: "{{ api_url }}/api/v1/account/organizations/{{ org }}/access"
         method: POST
@@ -236,8 +239,9 @@
         body:
           subject_type: user
           subject_id: "{{ svc.json.accepted.user_id }}"
-          role_name: owner
+          role_name: "{{ item }}"
         headers: "{{ auth }}"
+      loop: [owner, platform-admin]
 
     - name: Name it in the connector srwx lists
       ansible.builtin.uri:

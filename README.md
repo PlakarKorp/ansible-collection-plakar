@@ -51,6 +51,7 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.check` | Verify the integrity of a store's snapshots |
 | `plakarkorp.plakar.prune` | Prune a store's snapshots by retention rule |
 | `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
+| `plakarkorp.plakar.integration` | Install integrations from the catalog (needs the `platform-admin` role) |
 | `plakarkorp.plakar.store` | Declare stores (initialized on creation) |
 | `plakarkorp.plakar.connector` | Declare source and destination connectors |
 | `plakarkorp.plakar.secret_provider` | Declare secret providers (Vault, Scaleway Secret Manager) |

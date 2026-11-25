@@ -470,6 +470,63 @@
       register: repo_gone_again
       failed_when: repo_gone_again.changed or not repo_gone.changed
 
+    # --- integrations --------------------------------------------------------
+    # setup.yml registered the sideloaded vault package; this makes that
+    # version the current one. Nothing is uninstalled for real: an uninstall
+    # deletes the package, and installing it again would need the
+    # license-authenticated feed this stack does not have.
+    - name: Install vault
+      plakarkorp.plakar.integration:
+        name: vault
+      register: vault_integration
+
+    - name: Installed again is a no-op
+      plakarkorp.plakar.integration:
+        name: vault
+      register: vault_again
+      failed_when: vault_again is failed or vault_again.changed
+
+    - name: Pinned to the version it is on is a no-op too
+      plakarkorp.plakar.integration:
+        name: vault
+        version: "{{ vault_again.integration.version }}"
+      register: vault_pinned
+      failed_when: >-
+        vault_pinned is failed or vault_pinned.changed
+        or vault_pinned.integration.id != vault_again.integration.id
+
+    # The install route answers an unknown version or name with a bare 500.
+    - name: A version the catalog does not offer is refused, with those it does
+      plakarkorp.plakar.integration:
+        name: vault
+        version: v0.0.1
+      register: vault_no_version
+      failed_when: >-
+        vault_no_version is not failed
+        or vault_again.integration.version not in vault_no_version.msg
+
+    - name: An integration the catalog does not have is refused
+      plakarkorp.plakar.integration:
+        name: no-such-integration
+      register: no_integration
+      failed_when: no_integration is not failed or 'catalog' not in no_integration.msg
+
+    - name: Uninstalling in check mode reports the versions and removes nothing
+      plakarkorp.plakar.integration:
+        name: vault
+        state: absent
+      check_mode: true
+      register: vault_dry_gone
+      failed_when: >-
+        vault_dry_gone is failed or not vault_dry_gone.changed
+        or vault_dry_gone.integration.versions != [vault_again.integration.version]
+
+    - name: It is still installed
+      plakarkorp.plakar.integration:
+        name: vault
+      register: vault_still
+      failed_when: vault_still is failed or vault_still.changed
+
     # --- secret providers ----------------------------------------------------
     # Declaring a provider only records how to reach a secret manager, so
     # none has to answer here; the URL and the token are made up.
