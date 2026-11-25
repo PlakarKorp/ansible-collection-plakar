@@ -14,3 +14,4 @@ plugins/modules/organization.py validate-modules:missing-gplv3-license
 plugins/modules/member.py validate-modules:missing-gplv3-license
 plugins/modules/grant.py validate-modules:missing-gplv3-license
 plugins/modules/organization_info.py validate-modules:missing-gplv3-license
+plugins/modules/secret_provider.py validate-modules:missing-gplv3-license

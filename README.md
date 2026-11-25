@@ -53,6 +53,7 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
 | `plakarkorp.plakar.store` | Declare stores (initialized on creation) |
 | `plakarkorp.plakar.connector` | Declare source and destination connectors |
+| `plakarkorp.plakar.secret_provider` | Declare secret providers (Vault, Scaleway Secret Manager) |
 | `plakarkorp.plakar.inventory` | Declare inventories (cloud providers or self-managed) |
 | `plakarkorp.plakar.inventory_resource` | Declare resources in a self-managed inventory |
 | `plakarkorp.plakar.inventory_sync` | Re-read what an inventory's provider holds |
@@ -131,6 +132,38 @@ Declaring the estate looks like this:
       secret_access_key: "{{ vault_s3_secret_key }}"
       root: /backups
 ```
+
+## Secret providers
+
+A field does not have to hold its value. Declare the secret manager once, and
+a field of a store, a connector or an inventory can name where the value
+lives: Plakar then keeps the path only, and reads the secret each time it
+needs it.
+
+```yaml
+- plakarkorp.plakar.secret_provider:
+    name: Vault
+    integration: vault
+    fields:
+      url: https://vault.example.com:8200
+      token: "{{ vault_plakar_token }}"
+  register: vault
+
+- plakarkorp.plakar.store:
+    name: Offsite S3
+    integration: s3
+    resource: Ample Sky
+    fields:
+      root: /backups
+      passphrase: "{{ vault_repo_passphrase }}"
+      secret_access_key:
+        value: secret/prod/s3#secret_key     # {engine}/{path}#{field}
+        provider_id: "{{ vault.secret_provider.id }}"
+```
+
+The Control Plane does not return the secrets it holds, so a value such as
+the token above is sent when the object is created and left alone afterwards.
+Run the task once with `update_secrets: always` to rotate it.
 
 ## Inventories
 

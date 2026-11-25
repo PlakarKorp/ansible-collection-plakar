@@ -470,6 +470,92 @@
       register: repo_gone_again
       failed_when: repo_gone_again.changed or not repo_gone.changed
 
+    # --- secret providers ----------------------------------------------------
+    # Declaring a provider only records how to reach a secret manager, so
+    # none has to answer here; the URL and the token are made up.
+    - name: Clean up a secret provider leftover
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        state: absent
+
+    - name: A secret provider without the field its protocol requires is refused
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        integration: vault
+        fields:
+          token: made-up-token
+      register: sp_no_url
+      failed_when: sp_no_url is not failed or 'url' not in sp_no_url.msg
+
+    # vault speaks vault-sm: the protocol is not the integration's name, and
+    # the API answers an unknown one with a 500.
+    - name: A protocol the integration does not declare is refused
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        integration: vault
+        protocol: vault
+        fields:
+          url: http://vault.internal:8200
+      register: sp_bad_protocol
+      failed_when: sp_bad_protocol is not failed or 'vault-sm' not in sp_bad_protocol.msg
+
+    - name: Declare a Vault
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        integration: vault
+        fields:
+          url: http://vault.internal:8200
+          token: made-up-token
+      register: sp_created
+
+    - name: It was created, on the protocol the integration declares
+      ansible.builtin.assert:
+        that:
+          - sp_created.changed
+          - sp_created.secret_provider.protocol == 'vault-sm'
+
+    - name: The same provider again, token included, is a no-op
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        integration: vault
+        fields:
+          url: http://vault.internal:8200
+          token: made-up-token
+      register: sp_again
+      failed_when: sp_again is failed or sp_again.changed
+
+    - name: Moving its URL names no token
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        fields:
+          url: http://vault2.internal:8200
+      register: sp_moved
+      failed_when: sp_moved is failed or sp_moved.diff_keys | default([]) != ['fields']
+
+    # The update replaces the whole field map: had it dropped the token, the
+    # playbook's would differ from nothing and this task would send it again.
+    - name: The token survived the update
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        fields:
+          url: http://vault2.internal:8200
+          token: made-up-token
+      register: sp_kept
+      failed_when: sp_kept is failed or sp_kept.changed
+
+    - name: Drop the secret provider
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        state: absent
+      register: sp_gone
+
+    - name: Dropping it again is a no-op
+      plakarkorp.plakar.secret_provider:
+        name: Ansible vault
+        state: absent
+      register: sp_gone_again
+      failed_when: sp_gone_again.changed or not sp_gone.changed
+
     # --- inventories (round two) -------------------------------------------
     # Clean slate first, so a re-run over a previously aborted play still
     # asserts real creations below.

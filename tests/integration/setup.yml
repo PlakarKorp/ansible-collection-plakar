@@ -1,5 +1,5 @@
 # Provision the hermetic stack for e2e.yml: log in as the bootstrap admin,
-# install the (sideloaded) s3 integration, declare the inventory, resource and
+# install the (sideloaded) s3 and vault integrations, declare the inventory, resource and
 # the three connectors e2e.yml expects, initialize the kloset store, and mint
 # an API key for a service account holding the owner role (the e2e both runs jobs
 # and manages connector lifecycle).
@@ -84,29 +84,31 @@
 
     # The catalog fills asynchronously once the daemon resolves its identity
     # (bootstrap-root created it), so the first minute can answer empty.
-    - name: Wait for the s3 integration to reach the catalog
+    - name: Wait for the s3 and vault integrations to reach the catalog
       ansible.builtin.uri:
         url: "{{ api_url }}/api/v1/integrations/catalog"
         headers: "{{ auth }}"
       register: catalog
       retries: 60
       delay: 2
-      until: catalog.json['items'] | default([]) | selectattr('name', 'equalto', 's3') | list | length > 0
+      until: >-
+        ['s3', 'vault'] | difference(catalog.json['items'] | default([]) | map(attribute='name') | list)
+        | length == 0
 
-    - name: Note the catalog's s3 version
-      ansible.builtin.set_fact:
-        s3_version: "{{ (catalog.json['items'] | selectattr('name', 'equalto', 's3') | first).version }}"
-
-    # The .ptar for this version is already in the pkgs volume (the workflow
-    # downloaded it), so this registers it without touching the plugin feed.
-    - name: Install the s3 integration
+    # The .ptar files for these versions are already in the pkgs volume (the
+    # workflow downloaded them), so this registers them without touching the
+    # plugin feed. s3 backs the connectors, vault the secret provider.
+    - name: Install the s3 and vault integrations
       ansible.builtin.uri:
         url: "{{ api_url }}/api/v1/integrations/installed"
         method: POST
         body_format: json
-        body: { name: s3, version: "{{ s3_version }}" }
+        body:
+          name: "{{ item }}"
+          version: "{{ (catalog.json['items'] | selectattr('name', 'equalto', item) | first).version }}"
         headers: "{{ auth }}"
         status_code: [200, 201]
+      loop: [s3, vault]
 
     - name: Resolve the installed s3 integration id
       ansible.builtin.uri:
