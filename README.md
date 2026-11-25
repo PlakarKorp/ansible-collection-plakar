@@ -55,6 +55,8 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.store` | Declare stores (initialized on creation) |
 | `plakarkorp.plakar.connector` | Declare source and destination connectors |
 | `plakarkorp.plakar.secret_provider` | Declare secret providers (Vault, Scaleway Secret Manager) |
+| `plakarkorp.plakar.environment` | Declare the environments stores and connectors are labelled with |
+| `plakarkorp.plakar.data_class` | Declare the data classes source connectors carry |
 | `plakarkorp.plakar.inventory` | Declare inventories (cloud providers or self-managed) |
 | `plakarkorp.plakar.inventory_resource` | Declare resources in a self-managed inventory |
 | `plakarkorp.plakar.inventory_sync` | Re-read what an inventory's provider holds |
