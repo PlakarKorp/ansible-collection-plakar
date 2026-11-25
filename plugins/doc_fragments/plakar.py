@@ -70,3 +70,24 @@ options:
     type: list
     elements: str
 '''
+
+    SECRETS = r'''
+options:
+  update_secrets:
+    description:
+      - When to send a value the API does not show. Since v0.19 the Plakar
+        Control Plane leaves the value of a sensitive field out of what it
+        returns, so the module cannot tell whether the one in the playbook
+        differs from the one stored.
+      - V(on_create) sends such a value at creation only. Later runs leave
+        the stored one alone and report no change for it, also when another
+        option of the same task is updated.
+      - V(always) sends it on every run, which then reports a change each
+        time. Use it for the run that rotates a credential.
+      - A value that references a secret provider is always shown, and so
+        always compared, as is every value on an older Control Plane.
+    type: str
+    default: on_create
+    choices: [on_create, always]
+    version_added: 0.9.4
+'''

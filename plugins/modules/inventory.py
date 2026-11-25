@@ -25,6 +25,7 @@ author:
   - PlakarKorp (@PlakarKorp)
 extends_documentation_fragment:
   - plakarkorp.plakar.plakar
+  - plakarkorp.plakar.plakar.secrets
 options:
   name:
     description:
@@ -96,7 +97,7 @@ diff_keys:
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.plakarkorp.plakar.plugins.module_utils.client import (
-    PlakarClient, PlakarError, argument_spec)
+    PlakarClient, PlakarError, argument_spec, update_secrets_option)
 from ansible_collections.plakarkorp.plakar.plugins.module_utils.inventories import (
     inventory_types, run_inventory_module)
 
@@ -109,6 +110,7 @@ def main():
         type=dict(type='str', choices=inventory_types()),
         configuration=dict(type='dict', no_log=True),
     )
+    spec.update(update_secrets_option())
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
     client = PlakarClient(module)
     try:

@@ -12,7 +12,8 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-from ansible_collections.plakarkorp.plakar.plugins.module_utils.client import PlakarError
+from ansible_collections.plakarkorp.plakar.plugins.module_utils.client import (
+    PlakarError, keeps_secret)
 
 # Per provider: the JSON key of its configuration block and its fields.
 # 'cf' fields travel as {'value': ...} (a ConfigurationField, optionally
@@ -123,6 +124,10 @@ def _merged_config(inv_type, desired, current):
         elif kind == 'cf':
             have = current.get(key) or {}
             field = {'value': have.get('value') or ''}
+            if have.get('filtered'):
+                # A value the API did not show: sent back marked as read, it
+                # keeps what is stored; sent bare, it would be emptied.
+                field['filtered'] = True
             if (have.get('provider') or {}).get('id'):
                 field['provider'] = {'id': have['provider']['id']}
             merged[key] = field
@@ -194,6 +199,11 @@ def run_inventory_module(module, client):
 
     detail = client.request('GET', '/api/v1/inventories/%s' % current['id'])
     have = detail.get(config_key) or {}
+    kinds = PROVIDERS[inv_type][1]
+    desired = dict(
+        (key, want) for key, want in desired.items()
+        if not (kinds[key] == 'cf'
+                and keeps_secret(want, have.get(key), params['update_secrets'])))
     diff = config_diff_keys(inv_type, desired, have)
     if not diff:
         module.exit_json(changed=False, inventory=_slim(current))
