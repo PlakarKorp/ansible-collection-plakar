@@ -889,6 +889,127 @@
       register: sync_missing
       failed_when: sync_missing is not failed
 
+    # --- what the Control Plane refuses, and what a connector cannot change --
+    - name: Clean up a pinned source leftover
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        state: absent
+
+    # The API answers these two with a bare 400; a dry run has to say so too.
+    - name: A store with data classes is refused, in check mode too
+      plakarkorp.plakar.store:
+        name: Refused store
+        integration: s3
+        resource: "{{ store_resource }}"
+        data_classes: [personal_data]
+        fields:
+          passphrase: correcthorsebatterystaple
+          root: /refused
+      check_mode: true
+      register: refused_classes
+      failed_when: refused_classes is not failed or 'data_classes' not in refused_classes.msg
+
+    - name: A source with a temperature is refused
+      plakarkorp.plakar.connector:
+        name: Refused source
+        type: source
+        integration: s3
+        resource: "{{ source_resource }}"
+        temperature: hot
+        fields:
+          root: /refused
+      register: refused_temperature
+      failed_when: refused_temperature is not failed or 'temperature' not in refused_temperature.msg
+
+    - name: A second box
+      plakarkorp.plakar.inventory_resource:
+        inventory: Ansible inventory
+        urn: urn:res-ansible-e2e-2
+        name: E2E box 2
+        class: object-storage
+        subclass: s3
+        endpoints: [e2e-box-2.internal]
+
+    - name: A source on the second box
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        integration: s3
+        resource: E2E box 2
+        fields:
+          access_key: minioadmin
+          secret_access_key: minioadmin
+          root: /source
+      register: pinned
+      failed_when: pinned is failed or not pinned.changed
+
+    - name: The same source, its resource by URN, is a no-op
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        integration: s3
+        resource: urn:res-ansible-e2e-2
+      register: pinned_by_urn
+      failed_when: pinned_by_urn is failed or pinned_by_urn.changed
+
+    - name: Moving it to another resource is refused, not ignored
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        resource: E2E box
+      register: pinned_moved
+      failed_when: pinned_moved is not failed or 'immutable' not in pinned_moved.msg
+
+    - name: Another integration is refused as well
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        integration: vault
+      register: pinned_integration
+      failed_when: pinned_integration is not failed or 'immutable' not in pinned_integration.msg
+
+    # A resource can go away under a connector, by hand or by a sync. The
+    # Control Plane then refuses any change to the connector but a resource.
+    - name: The second box disappears
+      plakarkorp.plakar.inventory_resource:
+        inventory: Ansible inventory
+        urn: urn:res-ansible-e2e-2
+        state: absent
+
+    - name: A change to the source that lost its resource is refused
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        environment: production
+      register: orphan_change
+      failed_when: orphan_change is not failed or 'lost its resource' not in orphan_change.msg
+
+    - name: It takes another resource in place
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        resource: E2E box
+      register: orphan_attached
+      failed_when: >-
+        orphan_attached is failed
+        or orphan_attached.diff_keys | default([]) != ['resource']
+        or orphan_attached.connector.id != pinned.connector.id
+
+    - name: The same again is a no-op
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        resource: E2E box
+      register: orphan_again
+      failed_when: orphan_again is failed or orphan_again.changed
+
+    - name: Drop the pinned source
+      plakarkorp.plakar.connector:
+        name: Ansible pinned source
+        type: source
+        state: absent
+
     - name: Drop the resource
       plakarkorp.plakar.inventory_resource:
         inventory: Ansible inventory

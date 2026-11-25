@@ -53,12 +53,19 @@ options:
     description:
       - Name of the installed integration backing the connector, for example
         C(s3) or C(sftp).
-      - Required when creating.
+      - Required when creating; immutable afterwards. Naming another one for
+        an existing connector fails the task.
     type: str
   resource:
     description:
       - URN or name of the inventory resource the connector attaches to.
-      - Required when creating.
+      - Required when creating; immutable afterwards. A URN and a name for
+        the same resource are the same resource, and naming another one for
+        an existing connector fails the task.
+      - A connector whose resource was deleted since, by hand or by a sync
+        after it disappeared from the cloud, is left without one. The
+        Control Plane then refuses any change to it but a new resource, which
+        it takes in place.
     type: str
   fields:
     description:
@@ -79,6 +86,8 @@ options:
   data_classes:
     description:
       - Data classes the connector carries.
+      - Sources only. The Control Plane refuses them on a destination, and
+        so does the module.
     type: list
     elements: str
   environment:
@@ -87,7 +96,8 @@ options:
     type: str
   temperature:
     description:
-      - Storage temperature.
+      - Refused when set. The Control Plane only accepts a temperature on a
+        store.
     type: str
 '''
 

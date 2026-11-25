@@ -48,12 +48,18 @@ options:
   integration:
     description:
       - Name of the installed integration backing the store.
-      - Required when creating.
+      - Required when creating; immutable afterwards. Naming another one for
+        an existing store fails the task.
     type: str
   resource:
     description:
       - URN or name of the inventory resource the store attaches to.
-      - Required when creating.
+      - Required when creating; immutable afterwards. A URN and a name for
+        the same resource are the same resource, and naming another one for
+        an existing store fails the task.
+      - A store whose resource was deleted since is left without one, and the
+        Control Plane then refuses any change to it but a new resource, which
+        it takes in place.
     type: str
   fields:
     description:
@@ -76,7 +82,8 @@ options:
     elements: str
   data_classes:
     description:
-      - Data classes the store accepts.
+      - Refused when set. The Control Plane only accepts data classes on a
+        source connector.
     type: list
     elements: str
   environment:
