@@ -473,6 +473,16 @@
     # --- secret providers ----------------------------------------------------
     # Declaring a provider only records how to reach a secret manager, so
     # none has to answer here; the URL and the token are made up.
+    - name: Clean up what references a secret provider leftover
+      block:
+        - plakarkorp.plakar.connector:
+            name: Ansible vaulted source
+            type: source
+            state: absent
+        - plakarkorp.plakar.inventory:
+            name: Ansible vaulted scaleway
+            state: absent
+
     - name: Clean up a secret provider leftover
       plakarkorp.plakar.secret_provider:
         name: Ansible vault
@@ -542,6 +552,80 @@
           token: made-up-token
       register: sp_kept
       failed_when: sp_kept is failed or sp_kept.changed
+
+    # A reference is recorded when the object is declared and resolved when
+    # Plakar needs the value, so no secret manager has to answer here either.
+    - name: A source whose secret key lives in the provider, by name
+      plakarkorp.plakar.connector:
+        name: Ansible vaulted source
+        type: source
+        integration: s3
+        resource: "{{ source_resource }}"
+        fields:
+          access_key: minioadmin
+          root: /source
+          secret_access_key:
+            value: secret/ci/s3#secret_key
+            provider: Ansible vault
+      register: vaulted
+      failed_when: vaulted is failed or not vaulted.changed
+
+    - name: The same source with the provider by id is a no-op
+      plakarkorp.plakar.connector:
+        name: Ansible vaulted source
+        type: source
+        fields:
+          secret_access_key:
+            value: secret/ci/s3#secret_key
+            provider_id: "{{ sp_created.secret_provider.id }}"
+      register: vaulted_by_id
+      failed_when: vaulted_by_id is failed or vaulted_by_id.changed
+
+    # The message names the field: Ansible masks the values of fields, the
+    # provider's name with them.
+    - name: A provider nobody declared is refused
+      plakarkorp.plakar.connector:
+        name: Ansible vaulted source
+        type: source
+        fields:
+          secret_access_key:
+            value: secret/ci/s3#secret_key
+            provider: No such vault
+      register: no_vault
+      failed_when: no_vault is not failed or 'fields.secret_access_key' not in no_vault.msg
+
+    - name: An inventory whose secret key lives in the provider, by name
+      plakarkorp.plakar.inventory:
+        name: Ansible vaulted scaleway
+        type: scaleway
+        configuration:
+          scw_project_id: 11111111-2222-3333-4444-555555555555
+          scw_access_key: SCWAAAAAAAAAAAAAAAAA
+          scw_secret_key:
+            value: 66666666-7777-8888-9999-000000000000#secret_key
+            provider: Ansible vault
+      register: vaulted_inv
+      failed_when: vaulted_inv is failed or not vaulted_inv.changed
+
+    - name: The same inventory again is a no-op
+      plakarkorp.plakar.inventory:
+        name: Ansible vaulted scaleway
+        configuration:
+          scw_secret_key:
+            value: 66666666-7777-8888-9999-000000000000#secret_key
+            provider: Ansible vault
+      register: vaulted_inv_again
+      failed_when: vaulted_inv_again is failed or vaulted_inv_again.changed
+
+    - name: Drop the source and the inventory that reference it
+      block:
+        - plakarkorp.plakar.connector:
+            name: Ansible vaulted source
+            type: source
+            state: absent
+        - plakarkorp.plakar.inventory:
+            name: Ansible vaulted scaleway
+            state: absent
 
     - name: Drop the secret provider
       plakarkorp.plakar.secret_provider:

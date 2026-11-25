@@ -47,8 +47,11 @@ options:
   configuration:
     description:
       - Provider-specific configuration, as a flat mapping of field name to
-        value. A value may also be a mapping with V(value) and an optional
-        V(provider_id) naming a secret provider.
+        value.
+      - To take a value from a secret provider instead, give a mapping with
+        V(value), the path of the secret in the provider, and V(provider),
+        the name of the secret provider as M(plakarkorp.plakar.secret_provider)
+        declares it. V(provider_id) takes its id instead of its name.
       - "Keys per type — C(aws): C(credentials_type) (C(iam) or
         C(access_key)), C(region), C(access_key), C(secret_access_key);
         C(scaleway): C(scw_project_id), C(scw_access_key), C(scw_secret_key);

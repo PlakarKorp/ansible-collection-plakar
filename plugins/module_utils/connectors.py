@@ -42,14 +42,15 @@ def _value_str(value):
     return str(value)
 
 
-def _fields_to_api(raw):
-    """{key: 'value'} or {key: {'value': ..., 'provider_id': ...}} -> API shape."""
+def _fields_to_api(client, raw):
+    """{key: 'value'} or {key: {'value': ..., 'provider': ...}} -> API shape."""
     out = {}
     for key, val in (raw or {}).items():
         if isinstance(val, dict):
             field = {'value': _value_str(val.get('value', ''))}
-            if val.get('provider_id'):
-                field['provider'] = {'id': val['provider_id']}
+            provider_id = client.provider_ref('fields.%s' % key, val)
+            if provider_id:
+                field['provider'] = {'id': provider_id}
             out[key] = field
         else:
             out[key] = {'value': _value_str(val)}
@@ -68,7 +69,7 @@ def _check_store_passphrase(module, raw, name):
     """
     value = (raw or {}).get('passphrase')
     if isinstance(value, dict):
-        if value.get('provider_id'):
+        if value.get('provider') or value.get('provider_id'):
             return
         value = value.get('value')
     # A bare YAML boolean is never a passphrase; _value_str would turn it into
@@ -149,7 +150,7 @@ def run_connector_module(module, client, kind, store=False):
                            ok=(200, 204))
         module.exit_json(changed=True, connector=_slim(current))
 
-    desired_fields = _fields_to_api(params.get('fields')) if params.get('fields') else {}
+    desired_fields = _fields_to_api(client, params.get('fields')) if params.get('fields') else {}
 
     if current is None:
         for required in ('integration', 'resource'):

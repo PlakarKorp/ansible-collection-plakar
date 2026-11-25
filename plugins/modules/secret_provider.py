@@ -74,7 +74,6 @@ EXAMPLES = r'''
     fields:
       url: https://vault.example.com:8200
       token: "{{ vault_plakar_token }}"
-  register: vault
 
 - name: A store whose keys stay in Vault
   plakarkorp.plakar.store:
@@ -85,13 +84,13 @@ EXAMPLES = r'''
       root: /backups
       passphrase:
         value: secret/prod/plakar#passphrase
-        provider_id: "{{ vault.secret_provider.id }}"
+        provider: Vault
       access_key:
         value: secret/prod/s3#access_key
-        provider_id: "{{ vault.secret_provider.id }}"
+        provider: Vault
       secret_access_key:
         value: secret/prod/s3#secret_key
-        provider_id: "{{ vault.secret_provider.id }}"
+        provider: Vault
 
 - name: Rotate the token Plakar reaches Vault with
   plakarkorp.plakar.secret_provider:
@@ -109,8 +108,8 @@ EXAMPLES = r'''
 RETURN = r'''
 secret_provider:
   description: The secret provider acted on (a summary; field values are not
-    echoed). Its C(id) is what a field of a store, a connector or an
-    inventory names as C(provider_id).
+    echoed). A field of a store, a connector or an inventory references it
+    by its C(name) as C(provider), or by its C(id) as C(provider_id).
   returned: when the secret provider exists or was created
   type: dict
 diff_keys:
