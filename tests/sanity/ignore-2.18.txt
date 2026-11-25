@@ -16,3 +16,5 @@ plugins/modules/grant.py validate-modules:missing-gplv3-license
 plugins/modules/organization_info.py validate-modules:missing-gplv3-license
 plugins/modules/secret_provider.py validate-modules:missing-gplv3-license
 plugins/modules/integration.py validate-modules:missing-gplv3-license
+plugins/modules/environment.py validate-modules:missing-gplv3-license
+plugins/modules/data_class.py validate-modules:missing-gplv3-license

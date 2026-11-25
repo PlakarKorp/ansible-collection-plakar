@@ -470,6 +470,109 @@
       register: repo_gone_again
       failed_when: repo_gone_again.changed or not repo_gone.changed
 
+    # --- environments and data classes ---------------------------------------
+    # The slash and the percent sign are there for the delete, which carries
+    # the name in its path.
+    - name: Clean up classification leftovers
+      block:
+        - plakarkorp.plakar.connector:
+            name: Ansible labelled source
+            type: source
+            state: absent
+        - plakarkorp.plakar.environment:
+            name: "{{ item }}"
+            state: absent
+          loop: [ansible-e2e, "ansible/e2e 100%"]
+        - plakarkorp.plakar.data_class:
+            name: "{{ item }}"
+            state: absent
+          loop: [ansible-e2e, "ansible/e2e 100%"]
+
+    - name: An empty environment name is refused
+      plakarkorp.plakar.environment:
+        name: ""
+      register: env_empty
+      failed_when: env_empty is not failed
+
+    - name: Declare two environments
+      plakarkorp.plakar.environment:
+        name: "{{ item }}"
+      loop: [ansible-e2e, "ansible/e2e 100%"]
+      register: envs
+      failed_when: envs is failed or not envs.changed
+
+    - name: The same environments again are no-ops
+      plakarkorp.plakar.environment:
+        name: "{{ item }}"
+      loop: [ansible-e2e, "ansible/e2e 100%"]
+      register: envs_again
+      failed_when: envs_again is failed or envs_again.changed
+
+    - name: Declare two data classes
+      plakarkorp.plakar.data_class:
+        name: "{{ item }}"
+      loop: [ansible-e2e, "ansible/e2e 100%"]
+      register: classes
+      failed_when: classes is failed or not classes.changed
+
+    - name: The same data classes again are no-ops
+      plakarkorp.plakar.data_class:
+        name: "{{ item }}"
+      loop: [ansible-e2e, "ansible/e2e 100%"]
+      register: classes_again
+      failed_when: classes_again is failed or classes_again.changed
+
+    - name: A source labelled with them
+      plakarkorp.plakar.connector:
+        name: Ansible labelled source
+        type: source
+        integration: s3
+        resource: "{{ source_resource }}"
+        environment: ansible-e2e
+        data_classes: [ansible-e2e]
+        fields:
+          access_key: minioadmin
+          secret_access_key: minioadmin
+          root: /source
+      register: labelled
+
+    - name: It carries both
+      ansible.builtin.assert:
+        that:
+          - labelled.changed
+          - labelled.connector.environment == 'ansible-e2e'
+          - labelled.connector.data_classes == ['ansible-e2e']
+
+    - name: Drop the labelled source
+      plakarkorp.plakar.connector:
+        name: Ansible labelled source
+        type: source
+        state: absent
+
+    - name: Drop the environments
+      plakarkorp.plakar.environment:
+        name: "{{ item }}"
+        state: absent
+      loop: [ansible-e2e, "ansible/e2e 100%"]
+      register: envs_gone
+      failed_when: envs_gone is failed or not envs_gone.changed
+
+    - name: Drop the data classes
+      plakarkorp.plakar.data_class:
+        name: "{{ item }}"
+        state: absent
+      loop: [ansible-e2e, "ansible/e2e 100%"]
+      register: classes_gone
+      failed_when: classes_gone is failed or not classes_gone.changed
+
+    - name: Dropping them again is a no-op
+      plakarkorp.plakar.environment:
+        name: "{{ item }}"
+        state: absent
+      loop: [ansible-e2e, "ansible/e2e 100%"]
+      register: envs_gone_again
+      failed_when: envs_gone_again is failed or envs_gone_again.changed
+
     # --- integrations --------------------------------------------------------
     # setup.yml registered the sideloaded vault package; this makes that
     # version the current one. Nothing is uninstalled for real: an uninstall
