@@ -211,7 +211,27 @@ class PlakarClient(object):
             known = ', '.join(sorted(repr(i.get('name')) for i in items)) or '(none installed)'
             raise PlakarError('no installed integration named %r — installed: %s'
                               % (name, known))
+        if len(matches) > 1:
+            # Several versions installed: the one in use is the current one.
+            current = [i for i in matches if i.get('is_current')]
+            if len(current) != 1:
+                raise PlakarError('%d versions of integration %r are installed and %d '
+                                  'are current' % (len(matches), name, len(current)))
+            return current[0]
         return matches[0]
+
+    def installed_versions(self, name):
+        """The installed versions of one integration, each with its id, its
+        version and whether it is the current one."""
+        rows = self.paged('/api/v1/integrations/installed', query={'name': quote(name)})
+        # The server's name filter is not taken on trust.
+        return [r for r in rows if r.get('name') == name]
+
+    def catalog_versions(self, name):
+        """The versions the catalog offers for an integration, none when the
+        name is unknown."""
+        rows = self.paged('/api/v1/integrations/catalog/%s/versions' % quote(name, safe=''))
+        return [r['version'] for r in rows if r.get('version')]
 
     def integration_protocols(self, integration_id, kind):
         """The protocols an installed integration declares for one use.
