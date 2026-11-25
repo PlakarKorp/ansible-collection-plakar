@@ -340,6 +340,33 @@
         name: Adopted store
         state: absent
 
+    # The API answers 200 to an initialization that failed. The task has to
+    # fail, and to leave no store behind: found by a later run, it would be
+    # reported present and never initialized.
+    - name: A store whose storage refuses the keys fails
+      plakarkorp.plakar.store:
+        name: Unreachable store
+        integration: s3
+        resource: "{{ store_resource }}"
+        fields:
+          passphrase: correcthorsebatterystaple
+          access_key: not-a-key
+          secret_access_key: not-a-secret
+          port: 9000
+          root: /unreachable
+          use_tls: false
+      register: unreachable
+      failed_when: >-
+        unreachable is not failed
+        or 'failed to initialize' not in unreachable.msg
+
+    - name: It left no store behind
+      plakarkorp.plakar.store:
+        name: Unreachable store
+        state: absent
+      register: unreachable_gone
+      failed_when: unreachable_gone is failed or unreachable_gone.changed
+
     # No protocol: it defaults to the integration name.
     - name: Create a managed store
       plakarkorp.plakar.store:
