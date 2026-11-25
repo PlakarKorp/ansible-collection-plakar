@@ -24,6 +24,7 @@ author:
   - PlakarKorp (@PlakarKorp)
 extends_documentation_fragment:
   - plakarkorp.plakar.plakar
+  - plakarkorp.plakar.plakar.secrets
 options:
   name:
     description:

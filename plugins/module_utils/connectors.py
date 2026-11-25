@@ -12,12 +12,13 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-from ansible_collections.plakarkorp.plakar.plugins.module_utils.client import PlakarError
+from ansible_collections.plakarkorp.plakar.plugins.module_utils.client import (
+    PlakarError, keeps_secret, update_secrets_option)
 
 
 def connector_options():
     """Options shared by the connector and store modules."""
-    return dict(
+    spec = dict(
         name=dict(type='str', required=True),
         state=dict(type='str', default='present', choices=['present', 'absent']),
         protocol=dict(type='str'),
@@ -29,6 +30,8 @@ def connector_options():
         environment=dict(type='str'),
         temperature=dict(type='str'),
     )
+    spec.update(update_secrets_option())
+    return spec
 
 
 def _value_str(value):
@@ -164,9 +167,14 @@ def run_connector_module(module, client, kind, store=False):
         result['initialized'] = initialized
         module.exit_json(changed=True, connector=result)
 
-    # present, and it exists: diff only what the playbook sets.
+    # present, and it exists: diff only what the playbook sets, less the
+    # secrets the API does not show.
+    current_fields = current.get('fields') or {}
+    desired_fields = dict(
+        (key, want) for key, want in desired_fields.items()
+        if not keeps_secret(want, current_fields.get(key), params['update_secrets']))
     changes = {}
-    if desired_fields and _fields_differ(desired_fields, current.get('fields')):
+    if desired_fields and _fields_differ(desired_fields, current_fields):
         changes['fields'] = True
     for key, transform in (
             ('protocol', None),
@@ -194,7 +202,7 @@ def run_connector_module(module, client, kind, store=False):
 
     # v1 update is POST with a full create-shaped body: merge the playbook's
     # values over the connector's current state so unset options stay put.
-    merged_fields = dict(current.get('fields') or {})
+    merged_fields = dict(current_fields)
     merged_fields.update(desired_fields)
     endpoints = params.get('endpoints')
     if endpoints is None:

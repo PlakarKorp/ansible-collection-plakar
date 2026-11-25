@@ -378,6 +378,21 @@
       register: repo_again
       failed_when: repo_again.changed
 
+    # A Control Plane from v0.19 on does not show the secrets it holds; the
+    # task that created the store, secrets included, must still be a no-op.
+    - name: The same store again, secrets included, is a no-op
+      plakarkorp.plakar.store:
+        name: Ansible repo
+        integration: s3
+        resource: "{{ store_resource }}"
+        fields:
+          passphrase: correcthorsebatterystaple
+          access_key: minioadmin
+          secret_access_key: minioadmin
+          root: /ansible-repo
+      register: repo_secrets_again
+      failed_when: repo_secrets_again.changed
+
     - name: Changing a field is an update
       plakarkorp.plakar.store:
         name: Ansible repo
@@ -536,6 +551,60 @@
         state: absent
       register: inv_gone_again
       failed_when: inv_gone_again.changed or not inv_gone.changed or not res_gone.changed
+
+    # --- inventory secrets ---------------------------------------------------
+    # The keys are made up: nothing here synchronizes the inventory.
+    - name: Clean up a Scaleway leftover
+      plakarkorp.plakar.inventory:
+        name: Ansible scaleway
+        state: absent
+
+    - name: A Scaleway inventory
+      plakarkorp.plakar.inventory:
+        name: Ansible scaleway
+        type: scaleway
+        configuration:
+          scw_project_id: 11111111-2222-3333-4444-555555555555
+          scw_access_key: SCWAAAAAAAAAAAAAAAAA
+          scw_secret_key: made-up-secret
+      register: scw_created
+      failed_when: scw_created is failed or not scw_created.changed
+
+    - name: The same inventory again, keys included, is a no-op
+      plakarkorp.plakar.inventory:
+        name: Ansible scaleway
+        type: scaleway
+        configuration:
+          scw_project_id: 11111111-2222-3333-4444-555555555555
+          scw_access_key: SCWAAAAAAAAAAAAAAAAA
+          scw_secret_key: made-up-secret
+      register: scw_again
+      failed_when: scw_again is failed or scw_again.changed
+
+    - name: Moving it to another project names no key
+      plakarkorp.plakar.inventory:
+        name: Ansible scaleway
+        configuration:
+          scw_project_id: 99999999-2222-3333-4444-555555555555
+      register: scw_moved
+      failed_when: scw_moved is failed or scw_moved.diff_keys | default([]) != ['scw_project_id']
+
+    # An update that emptied the keys would leave them differing from the
+    # playbook's, and this task would send them again.
+    - name: The keys survived the update
+      plakarkorp.plakar.inventory:
+        name: Ansible scaleway
+        configuration:
+          scw_project_id: 99999999-2222-3333-4444-555555555555
+          scw_access_key: SCWAAAAAAAAAAAAAAAAA
+          scw_secret_key: made-up-secret
+      register: scw_kept
+      failed_when: scw_kept is failed or scw_kept.changed
+
+    - name: Drop the Scaleway inventory
+      plakarkorp.plakar.inventory:
+        name: Ansible scaleway
+        state: absent
 
     # --- organizations, members, grants (round three) ----------------------
     - name: Clean up a tenant leftover

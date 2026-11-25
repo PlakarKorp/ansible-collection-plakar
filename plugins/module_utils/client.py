@@ -39,6 +39,28 @@ def argument_spec():
     )
 
 
+def update_secrets_option():
+    """The option deciding when a value the API does not show is sent."""
+    return dict(
+        update_secrets=dict(type='str', default='on_create',
+                            choices=['on_create', 'always'], no_log=False),
+    )
+
+
+def keeps_secret(want, have, update_secrets):
+    """Whether a field keeps the value the Control Plane holds for it.
+
+    Since v0.19 a read leaves the value of a sensitive field out and marks
+    the field filtered, so there is nothing to compare the playbook's value
+    with. Such a field is sent again only under update_secrets=always, or
+    when the playbook turns it into a reference to a secret provider, which
+    a read does show. Sent back as it was read, it keeps its stored value.
+    """
+    if not (have or {}).get('filtered'):
+        return False
+    return update_secrets != 'always' and not (want.get('provider') or {}).get('id')
+
+
 class PlakarError(Exception):
     def __init__(self, msg, status=None, body=None):
         super(PlakarError, self).__init__(msg)
