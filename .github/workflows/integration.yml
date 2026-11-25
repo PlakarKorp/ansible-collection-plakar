@@ -50,20 +50,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
 
-      # The enterprise s3 .ptar is served publicly from the versioned feed;
-      # dropped into the pkgs volume it counts as installed, so the API's
-      # install step never reaches the license-authenticated fetch path.
-      - name: Sideload the s3 integration package
+      # The enterprise .ptar files are served publicly from the versioned
+      # feed; dropped into the pkgs volume they count as installed, so the
+      # API's install step never reaches the license-authenticated fetch
+      # path. s3 backs the connectors, vault the secret provider.
+      - name: Sideload the s3 and vault integration packages
         working-directory: ansible_collections/plakarkorp/plakar/tests/integration/stack
         run: |
           mkdir -p pkgs
-          entry=$(curl -sf https://api.plakar.io/v1/integrations/integrations-v1.0.0.json \
-            | jq -c '[.integrations[] | select(.name=="s3" and .edition=="enterprise")] | last')
-          version=$(echo "$entry" | jq -r .version)
-          api=$(echo "$entry" | jq -r .api)
-          echo "s3 $version (plugin api $api)"
-          curl -sf -o "pkgs/s3_${version}_linux_amd64.ptar" \
-            "https://plakar.io/dist/plugins/kloset/enterprise/${api}/s3/s3_${version}_linux_amd64.ptar"
+          feed=$(curl -sf https://api.plakar.io/v1/integrations/integrations-v1.0.0.json)
+          for name in s3 vault; do
+            entry=$(echo "$feed" | jq -c --arg name "$name" \
+              '[.integrations[] | select(.name==$name and .edition=="enterprise")] | last')
+            version=$(echo "$entry" | jq -r .version)
+            api=$(echo "$entry" | jq -r .api)
+            echo "$name $version (plugin api $api)"
+            curl -sf -o "pkgs/${name}_${version}_linux_amd64.ptar" \
+              "https://plakar.io/dist/plugins/kloset/enterprise/${api}/${name}/${name}_${version}_linux_amd64.ptar"
+          done
 
       - name: Start the stack
         working-directory: ansible_collections/plakarkorp/plakar/tests/integration/stack

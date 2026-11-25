@@ -213,6 +213,32 @@ class PlakarClient(object):
                               % (name, known))
         return matches[0]
 
+    def integration_protocols(self, integration_id, kind):
+        """The protocols an installed integration declares for one use.
+
+        kind: store|source|destination|secret_provider. Each protocol carries
+        its scheme and the fields it takes. An integration that does not
+        serve that use answers 404, read here as declaring none.
+        """
+        try:
+            res = self.request('GET', '/api/v1/integrations/%s' % integration_id,
+                               query={'type': kind})
+        except PlakarError as e:
+            if e.status == 404:
+                return []
+            raise
+        return (res or {}).get('protocols') or []
+
+    def find_secret_provider(self, name):
+        """One secret provider by name, None when absent, error on a duplicate name."""
+        items = self.paged('/api/v1/account/organizations/%s/secret_providers'
+                           % self.org_id())
+        matches = [p for p in items if p.get('name') == name]
+        if len(matches) > 1:
+            raise PlakarError('%d secret providers named %r — names must be unique to '
+                              'address them from a playbook' % (len(matches), name))
+        return matches[0] if matches else None
+
     def resource_ref(self, value):
         """A resource across all inventories, by URN first, then by name.
 
