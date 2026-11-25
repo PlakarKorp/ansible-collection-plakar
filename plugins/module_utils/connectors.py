@@ -80,6 +80,36 @@ def _check_store_passphrase(module, raw, name):
                 'storage is already initialized elsewhere.' % name)
 
 
+def _initialize_store(module, client, created, name, compression):
+    """Initialize the storage of a store just created, or fail without it.
+
+    A failed initialization still answers 200, with ok false and the reason
+    in the body. Initialization happens at creation only: a store left in
+    place would be found by the next run, reported present and never
+    initialized. So it is removed, and the next run starts over. Removing it
+    does not touch the underlying storage.
+    """
+    body = {'compression': compression} if compression else None
+    try:
+        res = client.request('POST', '/api/v1/connectors/%s/stores/create' % created['id'],
+                             body=body, ok=(200, 201, 202, 204))
+    except PlakarError as e:
+        reason = e.msg
+    else:
+        if not isinstance(res, dict) or res.get('ok') is not False:
+            return
+        reason = res.get('error') or 'no reason given'
+
+    msg = 'store %r was created but its storage failed to initialize: %s' % (name, reason)
+    try:
+        client.request('DELETE', '/api/v1/connectors/%s' % created['id'], ok=(200, 204))
+    except PlakarError as e:
+        module.fail_json(msg='%s — removing the store failed too (%s): remove it before '
+                             'the next run, which would otherwise find it and leave it '
+                             'uninitialized' % (msg, e.msg))
+    module.fail_json(msg='%s — the store was removed, so the next run starts over' % msg)
+
+
 def _fields_differ(desired, current):
     """Only the keys the playbook names are managed; extra current keys stay."""
     current = current or {}
@@ -156,11 +186,7 @@ def run_connector_module(module, client, kind, store=False):
 
         initialized = False
         if store and params.get('initialize'):
-            init_body = {}
-            if params.get('compression'):
-                init_body['compression'] = params['compression']
-            client.request('POST', '/api/v1/connectors/%s/stores/create' % created['id'],
-                           body=init_body or None, ok=(200, 201, 202, 204))
+            _initialize_store(module, client, created, name, params.get('compression'))
             initialized = True
 
         result = _slim(created)

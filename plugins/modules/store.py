@@ -88,6 +88,9 @@ options:
     description:
       - Whether to initialize the underlying storage right after creating
         the store. Initialization only happens on creation, never on update.
+      - When the storage fails to initialize, the task fails and the store
+        it had just created is removed, so that the next run starts over
+        instead of finding a store that was never initialized.
       - Set it to false when the storage is already initialized elsewhere,
         which also lifts the passphrase requirement.
     type: bool
