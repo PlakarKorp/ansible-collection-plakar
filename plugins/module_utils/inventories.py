@@ -67,17 +67,18 @@ def _value_str(value):
     return str(value)
 
 
-def _field_to_api(value):
-    """'v' or {'value': ..., 'provider_id': ...} -> ConfigurationField JSON."""
+def _field_to_api(client, key, value):
+    """'v' or {'value': ..., 'provider': ...} -> ConfigurationField JSON."""
     if isinstance(value, dict):
         field = {'value': _value_str(value.get('value', ''))}
-        if value.get('provider_id'):
-            field['provider'] = {'id': value['provider_id']}
+        provider_id = client.provider_ref('configuration.%s' % key, value)
+        if provider_id:
+            field['provider'] = {'id': provider_id}
         return field
     return {'value': _value_str(value)}
 
 
-def config_to_api(inv_type, raw):
+def config_to_api(client, inv_type, raw):
     """Playbook configuration (flat mapping) -> the provider's JSON block."""
     fields = PROVIDERS[inv_type][1]
     raw = raw or {}
@@ -88,7 +89,7 @@ def config_to_api(inv_type, raw):
     out = {}
     for key, value in raw.items():
         if fields[key] == 'cf':
-            out[key] = _field_to_api(value)
+            out[key] = _field_to_api(client, key, value)
         else:
             out[key] = _value_str(value)
     return out
@@ -163,7 +164,7 @@ def run_inventory_module(module, client):
         if not inv_type:
             module.fail_json(msg='type is required to create inventory %r' % name)
         config_key = PROVIDERS[inv_type][0]
-        desired = config_to_api(inv_type, params.get('configuration'))
+        desired = config_to_api(client, inv_type, params.get('configuration'))
         if desired and not config_key:
             module.fail_json(msg='%s inventories take no configuration' % inv_type)
 
@@ -191,7 +192,7 @@ def run_inventory_module(module, client):
                              'not know how to manage' % (name, inv_type))
 
     config_key = PROVIDERS[inv_type][0]
-    desired = config_to_api(inv_type, params.get('configuration'))
+    desired = config_to_api(client, inv_type, params.get('configuration'))
     if desired and not config_key:
         module.fail_json(msg='%s inventories take no configuration' % inv_type)
     if not desired:

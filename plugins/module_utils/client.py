@@ -239,6 +239,25 @@ class PlakarClient(object):
                               'address them from a playbook' % (len(matches), name))
         return matches[0] if matches else None
 
+    def provider_ref(self, key, field):
+        """The id of the secret provider a playbook field references.
+
+        The field is the mapping form of a value: provider names the secret
+        provider, provider_id gives its id, neither means a plain value.
+        Errors name the field by its key: Ansible masks the values of the
+        option the field comes from, the provider's name with them.
+        """
+        name, ident = field.get('provider'), field.get('provider_id')
+        if not name:
+            return ident or None
+        if ident:
+            raise PlakarError('%s references its secret provider by provider or by '
+                              'provider_id, not both' % key)
+        found = self.find_secret_provider(name)
+        if found is None:
+            raise PlakarError('%s names a secret provider that does not exist' % key)
+        return found['id']
+
     def resource_ref(self, value):
         """A resource across all inventories, by URN first, then by name.
 

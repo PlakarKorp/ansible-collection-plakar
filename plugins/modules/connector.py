@@ -63,8 +63,11 @@ options:
   fields:
     description:
       - Integration-specific configuration, as a mapping of field name to
-        value. A value may also be a mapping with V(value) and an optional
-        V(provider_id) naming a secret provider.
+        value.
+      - To take a value from a secret provider instead, give a mapping with
+        V(value), the path of the secret in the provider, and V(provider),
+        the name of the secret provider as M(plakarkorp.plakar.secret_provider)
+        declares it. V(provider_id) takes its id instead of its name.
       - On update, only the fields named here are compared and replaced;
         other existing fields are preserved.
     type: dict

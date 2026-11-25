@@ -147,7 +147,6 @@ needs it.
     fields:
       url: https://vault.example.com:8200
       token: "{{ vault_plakar_token }}"
-  register: vault
 
 - plakarkorp.plakar.store:
     name: Offsite S3
@@ -158,7 +157,7 @@ needs it.
       passphrase: "{{ vault_repo_passphrase }}"
       secret_access_key:
         value: secret/prod/s3#secret_key     # {engine}/{path}#{field}
-        provider_id: "{{ vault.secret_provider.id }}"
+        provider: Vault
 ```
 
 The Control Plane does not return the secrets it holds, so a value such as
