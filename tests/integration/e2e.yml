@@ -1220,6 +1220,182 @@
       register: tenant_gone_again
       failed_when: tenant_gone_again.changed or not tenant_gone.changed
 
+    # --- schedules -------------------------------------------------------------
+    # Every rule starts in 2099: nothing here fires, so the stores the
+    # assertions above count snapshots in are left alone.
+    - name: Clean up schedule leftovers
+      plakarkorp.plakar.schedule:
+        type: "{{ item.type }}"
+        origin: "{{ item.origin }}"
+        target: "{{ item.target | default(omit) }}"
+        labels: "{{ item.labels | default([]) }}"
+        state: absent
+      loop: &schedules
+        - { type: backup, origin: "{{ source_name }}", target: "{{ store_name }}", labels: [e2e-nightly] }
+        - { type: prune, origin: "{{ store_name }}", labels: [e2e-nightly] }
+        - { type: check, origin: "{{ store_name }}", labels: ["e2e:a"] }
+        - { type: check, origin: "{{ store_name }}", labels: ["e2e:b"] }
+
+    - name: Schedule a nightly backup
+      plakarkorp.plakar.schedule:
+        name: e2e nightly
+        type: backup
+        origin: "{{ source_name }}"
+        target: "{{ store_name }}"
+        labels: [e2e-nightly]
+        ignores: ["*.tmp"]
+        rules:
+          - periodicity: 86400
+            start: "2099-01-01T00:00:00Z"
+      register: sched_created
+      failed_when: sched_created is failed or not sched_created.changed
+
+    - name: The same schedule again is a no-op
+      plakarkorp.plakar.schedule:
+        name: e2e nightly
+        type: backup
+        origin: "{{ source_name }}"
+        target: "{{ store_name }}"
+        labels: [e2e-nightly]
+        ignores: ["*.tmp"]
+        rules:
+          - periodicity: 86400
+            start: "2099-01-01T00:00:00Z"
+      register: sched_again
+      failed_when: sched_again is failed or sched_again.changed
+
+    # The update is a full-body POST: what the playbook does not restate has
+    # to be carried over, or it would be erased.
+    - name: Twice a day, its ignores not restated
+      plakarkorp.plakar.schedule:
+        type: backup
+        origin: "{{ source_name }}"
+        target: "{{ store_name }}"
+        labels: [e2e-nightly]
+        rules:
+          - periodicity: 43200
+            start: "2099-01-01T00:00:00Z"
+      register: sched_moved
+
+    - name: The rule moved and the ignores stayed
+      ansible.builtin.assert:
+        that:
+          - sched_moved.diff_keys == ['rules']
+          - sched_moved.task.id == sched_created.task.id
+          - sched_moved.task.schedule.rules[0].periodicity == 43200
+          - sched_moved.task.config.ignores == ['*.tmp']
+
+    - name: Schedule a prune of the nightlies
+      plakarkorp.plakar.schedule:
+        type: prune
+        origin: "{{ store_name }}"
+        labels: [e2e-nightly]
+        retention:
+          day: 7
+          per_day: 1
+        group_by: dataset
+        rules:
+          - periodicity: 86400
+            start: "2099-01-01T00:00:00Z"
+      register: prune_sched
+      failed_when: prune_sched is failed or not prune_sched.changed
+
+    # A prune sent without its retention is refused by the API.
+    - name: Weekly, its retention not restated
+      plakarkorp.plakar.schedule:
+        type: prune
+        origin: "{{ store_name }}"
+        labels: [e2e-nightly]
+        rules:
+          - periodicity: 604800
+            start: "2099-01-01T00:00:00Z"
+      register: prune_moved
+
+    - name: The rule moved and the retention stayed
+      ansible.builtin.assert:
+        that:
+          - prune_moved.diff_keys == ['rules']
+          - prune_moved.task.config.day == 7
+          - prune_moved.task.config.per_day == 1
+          - prune_moved.task.config.locate.group_by == 'dataset'
+
+    - name: A retention bucket that does not exist is refused
+      plakarkorp.plakar.schedule:
+        type: prune
+        origin: "{{ store_name }}"
+        labels: [e2e-nightly]
+        retention:
+          days: 7
+        rules:
+          - periodicity: 86400
+      register: prune_typo
+      failed_when: prune_typo is not failed or 'days' not in prune_typo.msg
+
+    # Labels are part of what a schedule is: two checks on one store.
+    - name: Two checks, told apart by their labels
+      plakarkorp.plakar.schedule:
+        type: check
+        origin: "{{ store_name }}"
+        labels: ["{{ item }}"]
+        rules:
+          - periodicity: 3600
+            start: "2099-01-01T00:00:00Z"
+      loop: ["e2e:a", "e2e:b"]
+      register: checks
+      failed_when: checks is failed or not checks.changed
+
+    - name: The same two again are no-ops
+      plakarkorp.plakar.schedule:
+        type: check
+        origin: "{{ store_name }}"
+        labels: ["{{ item }}"]
+        rules:
+          - periodicity: 3600
+            start: "2099-01-01T00:00:00Z"
+      loop: ["e2e:a", "e2e:b"]
+      register: checks_again
+      failed_when: checks_again is failed or checks_again.changed
+
+    - name: A check takes no target
+      plakarkorp.plakar.schedule:
+        type: check
+        origin: "{{ store_name }}"
+        target: "{{ store_name }}"
+        rules:
+          - periodicity: 3600
+      register: check_target
+      failed_when: check_target is not failed
+
+    - name: Drop the schedules
+      plakarkorp.plakar.schedule:
+        type: "{{ item.type }}"
+        origin: "{{ item.origin }}"
+        target: "{{ item.target | default(omit) }}"
+        labels: "{{ item.labels | default([]) }}"
+        state: absent
+      loop: *schedules
+      register: sched_gone
+      failed_when: sched_gone is failed or not sched_gone.changed
+
+    - name: Dropping them again is a no-op
+      plakarkorp.plakar.schedule:
+        type: "{{ item.type }}"
+        origin: "{{ item.origin }}"
+        target: "{{ item.target | default(omit) }}"
+        labels: "{{ item.labels | default([]) }}"
+        state: absent
+      loop: *schedules
+      register: sched_gone_again
+      failed_when: sched_gone_again is failed or sched_gone_again.changed
+
+    - name: A schedule on a store nobody declared is absent already
+      plakarkorp.plakar.schedule:
+        type: check
+        origin: no such store
+        state: absent
+      register: sched_nowhere
+      failed_when: sched_nowhere is failed or sched_nowhere.changed
+
     - name: Summary
       ansible.builtin.debug:
         msg:

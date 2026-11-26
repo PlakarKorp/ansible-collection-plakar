@@ -308,6 +308,29 @@ def config_differs(module, task, config):
     return diff
 
 
+def carry_over(params, existing, schedule, config):
+    """Fill the update's body with what the stored task holds and the
+    playbook does not set.
+
+    v1 update is a full-body POST: an option left out of the playbook would
+    otherwise be erased, and a prune sent without its retention is refused.
+    """
+    stored = existing.get('config') or {}
+    if params.get('ignores') is None and stored.get('ignores'):
+        config['ignores'] = stored['ignores']
+    if not params.get('retention'):
+        for bucket in RETENTION_BUCKETS:
+            if stored.get(bucket) is not None:
+                config[bucket] = stored[bucket]
+    group_by = (stored.get('locate') or {}).get('group_by')
+    if not params.get('group_by') and group_by:
+        config['locate'] = {'group_by': group_by}
+    stored_schedule = existing.get('schedule') or {}
+    for key in ('priority', 'concurrency', 'miss_strategy'):
+        if key not in schedule and stored_schedule.get(key) not in (None, ''):
+            schedule[key] = stored_schedule[key]
+
+
 def main():
     spec = argument_spec()
     spec.update(
@@ -406,6 +429,7 @@ def main():
             module.exit_json(changed=False, task=existing)
         if module.check_mode:
             module.exit_json(changed=True, task=existing, diff_keys=diff_keys)
+        carry_over(params, existing, schedule, config)
         client.request('POST', '/api/v1/scheduling/scheduler/tasks/%s'
                        % existing['id'], body=body, ok=(200, 204))
         updated = match_task(client, task_type, origin['id'], target_id,
