@@ -150,6 +150,15 @@ def run_connector_module(module, client, kind, store=False):
                            ok=(200, 204))
         module.exit_json(changed=True, connector=_slim(current))
 
+    # The Control Plane answers these with a bare 400; refused here, a dry
+    # run reports them too.
+    if kind != 'source' and params.get('data_classes'):
+        module.fail_json(msg='data_classes is refused on a %s: the Control Plane only '
+                             'accepts data classes on a source connector' % kind)
+    if kind != 'store' and params.get('temperature'):
+        module.fail_json(msg='temperature is refused on a %s connector: the Control '
+                             'Plane only accepts a temperature on a store' % kind)
+
     desired_fields = _fields_to_api(client, params.get('fields')) if params.get('fields') else {}
 
     if current is None:
@@ -194,13 +203,33 @@ def run_connector_module(module, client, kind, store=False):
         result['initialized'] = initialized
         module.exit_json(changed=True, connector=result)
 
-    # present, and it exists: diff only what the playbook sets, less the
-    # secrets the API does not show.
+    # present, and it exists. Its integration and its resource are fixed at
+    # creation: a playbook that names another one is refused, not ignored.
+    integration = current.get('integration') or {}
+    if params.get('integration') and params['integration'] != integration.get('name'):
+        module.fail_json(msg='connector %r is backed by integration %r; the integration '
+                             'is immutable — delete and recreate to change it'
+                             % (name, integration.get('name')))
+    resource = current.get('resource') or {}
+    changes = {}
+    if params.get('resource'):
+        # A URN and a name for one resource are the same resource.
+        wanted = client.resource_ref(params['resource'])
+        if not resource.get('urn_id'):
+            # Its resource was deleted since: the one change the Control
+            # Plane takes on such a connector is a resource, in place.
+            resource = wanted
+            changes['resource'] = True
+        elif wanted['urn_id'] != resource['urn_id']:
+            module.fail_json(msg='connector %r is attached to resource %r; the resource '
+                                 'is immutable — delete and recreate to move it'
+                                 % (name, resource.get('name')))
+
+    # Diff only what the playbook sets, less the secrets the API does not show.
     current_fields = current.get('fields') or {}
     desired_fields = dict(
         (key, want) for key, want in desired_fields.items()
         if not keeps_secret(want, current_fields.get(key), params['update_secrets']))
-    changes = {}
     if desired_fields and _fields_differ(desired_fields, current_fields):
         changes['fields'] = True
     for key, transform in (
@@ -223,6 +252,11 @@ def run_connector_module(module, client, kind, store=False):
     if not changes:
         module.exit_json(changed=False, connector=_slim(current))
 
+    if not resource.get('urn_id'):
+        module.fail_json(msg='connector %r has lost its resource, and the Control Plane '
+                             'refuses any change to it but a new one — set resource'
+                             % name)
+
     if module.check_mode:
         module.exit_json(changed=True, connector=_slim(current),
                          diff_keys=sorted(changes))
@@ -234,12 +268,11 @@ def run_connector_module(module, client, kind, store=False):
     endpoints = params.get('endpoints')
     if endpoints is None:
         endpoints = [e.get('endpoint') for e in (current.get('endpoints') or [])]
-    resource = current.get('resource') or {}
     body = {
         'name': name,
         'type': kind,
         'protocol': params.get('protocol') or current.get('protocol'),
-        'integration': {'id': (current.get('integration') or {}).get('id')},
+        'integration': {'id': integration.get('id')},
         'urn_id': resource.get('urn_id'),
         'fields': merged_fields,
         'endpoints': [{'endpoint': e} for e in endpoints],
@@ -251,9 +284,6 @@ def run_connector_module(module, client, kind, store=False):
     temperature = params.get('temperature') or current.get('temperature')
     if temperature:
         body['temperature'] = temperature
-    if not body['urn_id']:
-        raise PlakarError('connector %r carries no resource urn_id; cannot build the '
-                          'full-body update v1 requires' % name)
 
     client.request('POST', '/api/v1/connectors/%s' % current['id'], body=body)
     module.exit_json(changed=True, connector=_slim(current), diff_keys=sorted(changes))
