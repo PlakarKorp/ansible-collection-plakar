@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: data_class
 short_description: Manage the data classes of a Plakar organization
-version_added: 0.9.4
+version_added: 0.10.0
 description:
   - Adds a data class to an organization, or removes it. Data classes are
     the names a source connector can carry in its C(data_classes), and the

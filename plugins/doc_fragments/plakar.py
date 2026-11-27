@@ -89,5 +89,5 @@ options:
     type: str
     default: on_create
     choices: [on_create, always]
-    version_added: 0.9.4
+    version_added: 0.10.0
 '''

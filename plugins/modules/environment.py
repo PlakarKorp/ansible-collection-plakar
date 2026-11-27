@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: environment
 short_description: Manage the environments of a Plakar organization
-version_added: 0.9.4
+version_added: 0.10.0
 description:
   - Adds an environment to an organization, or removes it. Environments are
     the names a store or a connector can carry as its C(environment), and
