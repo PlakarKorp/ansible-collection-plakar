@@ -51,6 +51,7 @@ Then point the collection at your deployment, via module arguments or the
 | `plakarkorp.plakar.check` | Verify the integrity of a store's snapshots |
 | `plakarkorp.plakar.prune` | Prune a store's snapshots by retention rule |
 | `plakarkorp.plakar.job_info` | Read job state, one job or a filtered list |
+| `plakarkorp.plakar.schedule` | Declare recurring backups, checks, syncs and prunes |
 | `plakarkorp.plakar.integration` | Install integrations from the catalog (needs the `platform-admin` role) |
 | `plakarkorp.plakar.store` | Declare stores (initialized on creation) |
 | `plakarkorp.plakar.connector` | Declare source and destination connectors |
@@ -134,6 +135,32 @@ Declaring the estate looks like this:
       access_key: "{{ vault_s3_access_key }}"
       secret_access_key: "{{ vault_s3_secret_key }}"
       root: /backups
+```
+
+## Schedules
+
+The same four operations can recur. A schedule has no name the Control Plane
+keeps, so it is addressed by what it does: its type, its origin, its target
+and its labels. One schedule per such tuple.
+
+```yaml
+- plakarkorp.plakar.schedule:
+    type: backup
+    origin: Production DB
+    target: S3 Store
+    labels: [nightly]
+    rules:
+      - periodicity: 86400         # seconds
+
+- plakarkorp.plakar.schedule:
+    type: prune
+    origin: S3 Store
+    retention:
+      day: 7
+      per_day: 1
+    group_by: dataset
+    rules:
+      - periodicity: 86400
 ```
 
 ## Secret providers
