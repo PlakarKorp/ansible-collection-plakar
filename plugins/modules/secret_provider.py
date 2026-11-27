@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: secret_provider
 short_description: Manage Plakar secret providers
-version_added: 0.9.4
+version_added: 0.10.0
 description:
   - Creates, updates and deletes secret providers in the Plakar management
     API. A secret provider is an external secret manager, such as Vault or

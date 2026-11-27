@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: integration
 short_description: Install Plakar integrations from the catalog
-version_added: 0.9.4
+version_added: 0.10.0
 description:
   - Installs an integration from the catalog of the Plakar Control Plane and
     makes that version the current one, or uninstalls it. An integration is
